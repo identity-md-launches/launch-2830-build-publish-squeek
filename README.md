@@ -99,7 +99,7 @@ node scripts/validate-powerup.mjs chromium
 
 Browser scripts serve the production export under `/preview/`, close their own server/browser, and write temporary evidence in `test/scratch/`. Their deterministic network responses and Canvas observation are development-only; no fixture, mock query parameter, practice switch, test hook, or fabricated reading is bundled into public play. The main browser script also separately observes the real API.
 
-Production build and typecheck passed; **27/27 unit tests, 19/19 Chromium/WebKit browser groups, 2/2 production Golden Seed interaction checks, and 16/16 design-probe checks passed**. The requested compact sizes and 200% text were checked in both engines.
+Production build and typecheck passed; **27/27 unit tests, 19/19 Chromium/WebKit browser groups, 2/2 production Golden Seed interaction checks, and 16/16 design-probe checks passed**. The requested compact sizes and 200% text were checked in both engines. A later review revision (landscape status-strip wrap at 200% text, visible session-only storage warning in landscape results) was rechecked with typecheck, build, 27/27 unit tests, 11/11 Chromium browser groups, the Chromium Golden Seed check and 16/16 design-probe checks; WebKit could not launch on that machine and was not rerun for it.
 
 Validation for this release is recorded in [artifacts/validation.md](artifacts/validation.md), with retained machine-readable results and selected screenshots. These are worker observations, not independent certification. Physical iPhone/Android devices, a screen-reader session, browser-native 200% zoom, and exhaustive contrast over Canvas/transparent overlays are not verified. Viewport emulation and 200% text enlargement are separate checks.
 

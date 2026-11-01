@@ -667,7 +667,12 @@ try {
           [390, 844, 200],
           [568, 320, 200],
         ]) {
-          const f = await fixture(browser, { viewport: { width, height } });
+          // A running 120 RPM reading gives the widest status/telemetry pair.
+          const f = await fixture(browser, {
+            viewport: { width, height },
+            coreStatus: "ACTIVE",
+            rpmMilli: 120000,
+          });
           const { page, tick } = f;
           const label = `${width}x${height} at ${textSize}% text`;
           const rect = (selector) =>
@@ -716,6 +721,39 @@ try {
             `${label}: HUD controls overlap`,
           );
           assert.ok(pause.width >= 44 && pause.height >= 44);
+          // The live status label must never paint over the RPM or wind values.
+          const strip = await page.evaluate(() => {
+            const box = (el) => {
+              const range = document.createRange();
+              range.selectNodeContents(el);
+              return range.getBoundingClientRect().toJSON();
+            };
+            const title = document.querySelector(".live-source .source-title");
+            return {
+              title:
+                getComputedStyle(title).display === "none" ? null : box(title),
+              values: [...document.querySelectorAll(".telemetry > div")].map(
+                box,
+              ),
+              text: document.querySelector(".telemetry").innerText,
+            };
+          });
+          assert.ok(strip.title, `${label}: running status label shown`);
+          for (const value of strip.values)
+            assert.ok(
+              strip.title.right <= value.left ||
+                value.right <= strip.title.left ||
+                strip.title.bottom <= value.top ||
+                value.bottom <= strip.title.top,
+              `${label}: status label overlaps telemetry`,
+            );
+          assert.match(strip.text, /120\s*RPM/, `${label}: full RPM label`);
+          assert.match(strip.text, /wind/, `${label}: full wind label`);
+          inside(
+            await rect(".game-viewport"),
+            screen,
+            "world during flight with live strip",
+          );
           await page.screenshot({
             path: `${output}/${browserName}-hud-${width}-${textSize}.png`,
           });
@@ -911,6 +949,28 @@ try {
           "Storage unavailable",
         ),
       );
+      assert.ok(
+        (await f.page.locator(".result-numbers").innerText()).includes(
+          "this session only",
+        ),
+        "result best score must not claim device storage",
+      );
+      // Short landscape results hide supporting copy, but never the failed-save warning.
+      for (const [width, height] of [
+        [568, 320],
+        [844, 390],
+      ]) {
+        await f.page.setViewportSize({ width, height });
+        await f.tick(32);
+        const note = await f.page
+          .locator(".local-note")
+          .evaluate((e) => e.getBoundingClientRect().toJSON());
+        assert.ok(
+          note.width > 0 && note.height > 0,
+          `${width}x${height}: storage warning visible`,
+        );
+      }
+      await f.page.setViewportSize({ width: 390, height: 844 });
       assert.ok(
         (
           await f.page.locator('.sr-only[role="status"]').first().innerText()

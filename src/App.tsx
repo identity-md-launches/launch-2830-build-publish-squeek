@@ -55,6 +55,7 @@ export default function App() {
   const bestScope = storageOK
     ? "saved on this device"
     : "kept for this session only";
+  const bestPlace = storageOK ? "this device" : "this session only";
   const [help, setHelp] = useState(false);
   const canvas = useRef<HTMLCanvasElement>(null);
   const scenery = useRef<HTMLCanvasElement>(null);
@@ -292,7 +293,7 @@ export default function App() {
                 <Icon name="medal" />
                 <span>
                   Best score <strong>{best}</strong>{" "}
-                  <span className="device-label">· this device</span>
+                  <span className="device-label">· {bestPlace}</span>
                 </span>
               </div>
             )}
@@ -459,7 +460,7 @@ export default function App() {
                         aria-label={`Best score ${best}, ${bestScope}`}
                       >
                         Best score {best}{" "}
-                        <span className="device-label">· this device</span>
+                        <span className="device-label">· {bestPlace}</span>
                       </span>
                     </div>
                     {inRun && !view.paused && view.countdown === null && (
@@ -531,7 +532,11 @@ export default function App() {
                           <span>
                             Best score
                             <br />
-                            <span className="device-label">on this device</span>
+                            <span className="device-label">
+                              {storageOK
+                                ? "on this device"
+                                : "this session only"}
+                            </span>
                           </span>
                           <strong>{best}</strong>
                         </div>
@@ -545,7 +550,9 @@ export default function App() {
                       >
                         Fly again <Icon name="arrow" />
                       </button>
-                      <p className="local-note">
+                      <p
+                        className={`local-note${storageOK ? "" : " is-warning"}`}
+                      >
                         {storageOK
                           ? "Best score saved on this device."
                           : "Storage unavailable. Best score kept for this session only."}

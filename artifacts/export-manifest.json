@@ -1,15 +1,15 @@
 {
-  "totalBytes": 408330,
+  "totalBytes": 408614,
   "files": [
     {
-      "path": "dist/assets/index-B38mkoaT.css",
-      "bytes": 18322,
-      "sha256": "f3da2e37a8202a35469ea1e12c32cb1b09597ad59dcf15556188fa2d9188a289"
+      "path": "dist/assets/index-5MDSqkGJ.js",
+      "bytes": 228285,
+      "sha256": "dacba0a751738b09b378103b5b3b362144f032673107aa3c5d51cbd06c021662"
     },
     {
-      "path": "dist/assets/index-DkCgX5Vi.js",
-      "bytes": 228207,
-      "sha256": "3ff9db1b29b3de9bf3dd064a43cebd8a6beeb0a302f46c5ef9826f73b4e5a601"
+      "path": "dist/assets/index-vwZIPQPi.css",
+      "bytes": 18528,
+      "sha256": "4a7184d9af91f9a6e68e93d4bdc16a1cdad5711b092628ce29f3db029ace1791"
     },
     {
       "path": "dist/favicon.svg",
@@ -34,7 +34,7 @@
     {
       "path": "dist/index.html",
       "bytes": 2134,
-      "sha256": "dd61346f53b4b583cce9db6617f6baf7f19bb840779f99938a536cf6b4d03624"
+      "sha256": "7c60873e76e834ad60e828d50b37c5fd4a5555b602f73ce279befbd62b12bddc"
     },
     {
       "path": "dist/share.png",

@@ -105,5 +105,71 @@
         "passed": true
       }
     ]
+  },
+  "revision2026_11_01": {
+    "note": "Revision for reviewer findings 2fe8e980 (landscape status strip overlap) and 8d596990 (hidden landscape storage warning). Chromium 141 only; WebKit could not launch on this machine (missing host GTK4/pango/cairo libraries), so WebKit was not rerun in this revision.",
+    "browserSuite": [
+      {
+        "name": "chromium: start, keyboard flap, crash, retry, focus and help",
+        "passed": true
+      },
+      {
+        "name": "chromium: malformed, simulated, unknown, stale and fault data disable play",
+        "passed": true
+      },
+      {
+        "name": "chromium: network failure freezes canvas and recovery counts down",
+        "passed": true
+      },
+      {
+        "name": "chromium: hidden tab needs a new response, orientation pauses, resize is inert",
+        "passed": true
+      },
+      {
+        "name": "chromium: cached data ages between polls; wheel stops at zero and honors reduced motion",
+        "passed": true
+      },
+      {
+        "name": "chromium: responsive start, help and result layout; axe accessibility",
+        "passed": true
+      },
+      {
+        "name": "chromium: pass gaps, show parachute, save best and stop scoring on death",
+        "passed": true
+      },
+      {
+        "name": "chromium: compact HUD, scroll positioning and enlarged result controls",
+        "passed": true
+      },
+      {
+        "name": "webkit: available",
+        "passed": false,
+        "limitation": "WebKit not launchable on this machine (missing host libraries)"
+      },
+      {
+        "name": "Chromium: touch pointer fires once; synthetic click and keyboard repeat are ignored",
+        "passed": true
+      },
+      {
+        "name": "Chromium: denied storage does not prevent flight/retry",
+        "passed": true
+      },
+      {
+        "name": "Chromium: live API hardware response, relative assets, no failed resources",
+        "passed": true
+      }
+    ],
+    "powerupSuite": [
+      {
+        "browser": "chromium",
+        "passed": true,
+        "powerScore": 22,
+        "finalScore": 34
+      }
+    ],
+    "newAssertionsAgainstPreviousSource": {
+      "compact HUD": "FAIL: 568x320 at 200% text: status label overlaps telemetry",
+      "denied storage": "FAIL: result best score must not claim device storage"
+    }
   }
 }
