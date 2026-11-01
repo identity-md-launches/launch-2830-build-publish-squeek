@@ -1,4 +1,4 @@
-import type { CSSProperties, Ref } from "react";
+import type { Ref } from "react";
 export function Icon({
   name,
   className = "",
@@ -75,48 +75,109 @@ export function Icon({
 }
 export function Wheel({
   wheelRef,
-  style,
+  state,
+  moving,
 }: {
   wheelRef?: Ref<SVGGElement>;
-  style?: CSSProperties;
+  state: "running" | "resting" | "unknown";
+  moving: boolean;
 }) {
   return (
     <svg
-      className="wheel"
-      width="44"
-      height="48"
+      className={`wheel is-${state} ${moving ? "is-moving" : ""}`}
+      data-state={state}
+      width="52"
+      height="56"
       viewBox="0 0 44 48"
       fill="none"
       aria-hidden="true"
-      style={style}
     >
-      <path
-        d="M22 23v21m-11 1h22"
-        stroke="#5f7056"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-      <circle
-        cx="22"
-        cy="21"
-        r="18"
-        fill="#f9f2d8"
-        stroke="#80684b"
-        strokeWidth="2.5"
-      />
-      <g ref={wheelRef}>
-        <circle cx="22" cy="21" r="14" stroke="#baa074" strokeWidth="1.3" />
-        {[0, 60, 120].map((a) => (
+      {state === "unknown" ? (
+        <g
+          className="unknown-signal"
+          stroke="#706351"
+          strokeWidth="2"
+          strokeLinecap="round"
+        >
+          <circle cx="22" cy="22" r="18" fill="#f9f2d8" />
+          <path d="M11 19q11-11 22 0M15 24q7-7 14 0M9 35 35 9" />
+          <circle cx="22" cy="29" r="1.5" fill="#706351" stroke="none" />
+        </g>
+      ) : (
+        <>
           <path
-            key={a}
-            transform={`rotate(${a} 22 21)`}
-            d="M22 7v28"
-            stroke="#baa074"
-            strokeWidth="1.5"
+            d="M22 23v21m-11 1h22"
+            stroke="#5f7056"
+            strokeWidth="2.5"
+            strokeLinecap="round"
           />
-        ))}
-      </g>
-      <circle cx="22" cy="21" r="3" fill="#80684b" />
+          <circle
+            cx="22"
+            cy="21"
+            r="18"
+            fill="#f9f2d8"
+            stroke="#80684b"
+            strokeWidth="2.5"
+          />
+          <g className="wheel-rotor" ref={wheelRef}>
+            <circle cx="22" cy="21" r="14" stroke="#baa074" strokeWidth="1.3" />
+            {[0, 60, 120].map((a) => (
+              <path
+                key={a}
+                transform={`rotate(${a} 22 21)`}
+                d="M22 7v28"
+                stroke="#baa074"
+                strokeWidth="1.5"
+              />
+            ))}
+          </g>
+          <circle cx="22" cy="21" r="3" fill="#80684b" />
+          {state === "resting" ? (
+            <g
+              className="sleeping-hamster"
+              stroke="#4c392e"
+              strokeWidth="1.1"
+              strokeLinecap="round"
+            >
+              <path
+                d="M10 29c-1-13 21-15 23-3 2 11-22 12-23 3Z"
+                fill="#fff3d7"
+              />
+              <path d="M14 29q-3-8 4-10 7-2 9 7 1 6-7 7" fill="#f5dcac" />
+              <circle cx="17" cy="21" r="3" fill="#efb4a0" />
+              <path d="M21 27q2 2 4 0" fill="none" />
+              <path d="M11 30q4 4 9 0" fill="none" />
+            </g>
+          ) : (
+            <g
+              className="running-hamster"
+              stroke="#4c392e"
+              strokeWidth="1.1"
+              strokeLinecap="round"
+            >
+              <g className="hamster-paws">
+                <path d="m15 31-3 3m6-3 2 3m5-3-2 3m6-4 3 3" />
+              </g>
+              <path
+                d="M10 26c-2-9 11-12 18-6 9 4 7 10-2 11-10 2-15-1-16-5Z"
+                fill="#fff3d7"
+              />
+              <circle cx="25" cy="20" r="3.5" fill="#f5dcac" />
+              <circle cx="25" cy="20" r="1.7" fill="#efb4a0" stroke="none" />
+              <circle cx="30" cy="25" r="1" fill="#4c392e" stroke="none" />
+              <ellipse
+                cx="28"
+                cy="28"
+                rx="2.5"
+                ry="1.5"
+                fill="#eaa06f"
+                stroke="none"
+              />
+              <path d="m33 27 2 1" />
+            </g>
+          )}
+        </>
+      )}
     </svg>
   );
 }

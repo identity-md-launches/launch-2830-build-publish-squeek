@@ -1,0 +1,30 @@
+{
+  "purpose": "Explicit budget for the release-evidence allowlist in .gitignore. No existing build configuration or dependency manifest changes.",
+  "ignoreFile": {
+    "path": ".gitignore",
+    "maxBytes": 2048
+  },
+  "artifactTotalMaxBytes": 1048576,
+  "fileMaxBytes": {
+    "artifacts/validation.md": 32768,
+    "artifacts/guide-licenses.txt": 16384,
+    "artifacts/github-about.json": 65536,
+    "artifacts/browser-results.json": 65536,
+    "artifacts/chromium-viewports.json": 65536,
+    "artifacts/webkit-viewports.json": 65536,
+    "artifacts/live-observation.json": 65536,
+    "artifacts/powerup-results.json": 65536,
+    "artifacts/design-probe.json": 65536,
+    "artifacts/export-manifest.json": 65536,
+    "artifacts/bundle-budget.json": 65536,
+    "artifacts/path-budget.json": 16384,
+    "artifacts/screenshots/start-390.png": 262144,
+    "artifacts/screenshots/start-desktop.png": 262144,
+    "artifacts/screenshots/start-focus.png": 262144,
+    "artifacts/screenshots/double-points.png": 262144,
+    "artifacts/screenshots/double-points-landscape.png": 262144,
+    "artifacts/screenshots/double-points-portrait-200.png": 262144,
+    "artifacts/screenshots/reconnecting.png": 262144,
+    "artifacts/screenshots/result-landscape-200.png": 262144
+  }
+}

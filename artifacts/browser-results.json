@@ -1,0 +1,109 @@
+{
+  "results": [
+    {
+      "name": "chromium: start, keyboard flap, crash, retry, focus and help",
+      "passed": true
+    },
+    {
+      "name": "chromium: malformed, simulated, unknown, stale and fault data disable play",
+      "passed": true
+    },
+    {
+      "name": "chromium: network failure freezes canvas and recovery counts down",
+      "passed": true
+    },
+    {
+      "name": "chromium: hidden tab needs a new response, orientation pauses, resize is inert",
+      "passed": true
+    },
+    {
+      "name": "chromium: cached data ages between polls; wheel stops at zero and honors reduced motion",
+      "passed": true
+    },
+    {
+      "name": "chromium: responsive start, help and result layout; axe accessibility",
+      "passed": true
+    },
+    {
+      "name": "chromium: pass gaps, show parachute, save best and stop scoring on death",
+      "passed": true
+    },
+    {
+      "name": "chromium: compact HUD, scroll positioning and enlarged result controls",
+      "passed": true
+    },
+    {
+      "name": "webkit: start, keyboard flap, crash, retry, focus and help",
+      "passed": true
+    },
+    {
+      "name": "webkit: malformed, simulated, unknown, stale and fault data disable play",
+      "passed": true
+    },
+    {
+      "name": "webkit: network failure freezes canvas and recovery counts down",
+      "passed": true
+    },
+    {
+      "name": "webkit: hidden tab needs a new response, orientation pauses, resize is inert",
+      "passed": true
+    },
+    {
+      "name": "webkit: cached data ages between polls; wheel stops at zero and honors reduced motion",
+      "passed": true
+    },
+    {
+      "name": "webkit: responsive start, help and result layout; axe accessibility",
+      "passed": true
+    },
+    {
+      "name": "webkit: pass gaps, show parachute, save best and stop scoring on death",
+      "passed": true
+    },
+    {
+      "name": "webkit: compact HUD, scroll positioning and enlarged result controls",
+      "passed": true
+    },
+    {
+      "name": "Chromium: touch pointer fires once; synthetic click and keyboard repeat are ignored",
+      "passed": true
+    },
+    {
+      "name": "Chromium: denied storage does not prevent flight/retry",
+      "passed": true
+    },
+    {
+      "name": "Chromium: live API hardware response, relative assets, no failed resources",
+      "passed": true
+    }
+  ],
+  "failures": [],
+  "targetedRechecks": {
+    "storageAnnouncement": [
+      {
+        "name": "Chromium: denied storage does not prevent flight/retry",
+        "passed": true
+      }
+    ],
+    "compactLayout": [
+      {
+        "name": "chromium: compact HUD, scroll positioning and enlarged result controls",
+        "passed": true
+      },
+      {
+        "name": "webkit: compact HUD, scroll positioning and enlarged result controls",
+        "passed": true
+      }
+    ],
+    "networkPauseCopy": [
+      {
+        "name": "chromium: network failure freezes canvas and recovery counts down",
+        "passed": true
+      },
+      {
+        "name": "webkit: network failure freezes canvas and recovery counts down",
+        "passed": true
+      }
+    ]
+  }
+}

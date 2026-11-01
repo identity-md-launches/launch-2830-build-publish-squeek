@@ -6,6 +6,7 @@ export interface Gate {
   gap: number;
   passed: boolean;
   seed: boolean;
+  golden: boolean;
   collected: boolean;
   seedY: number;
 }
@@ -24,10 +25,19 @@ export class Flight {
   private accumulator = 0;
   private nextIndex = 1;
   private previousCenter: number = WORLD.startY;
+  private nextGolden: number;
+  private doubleTicks = 0;
   private rng: () => number;
   constructor(rng: () => number = Math.random) {
     this.rng = rng;
+    this.nextGolden = 11 + this.randomInterval(0, 7);
     this.spawn();
+  }
+  get doubleRemaining() {
+    return this.doubleTicks * WORLD.step;
+  }
+  private randomInterval(min: number, max: number) {
+    return min + Math.min(max - min, Math.floor(this.rng() * (max - min + 1)));
   }
   flap() {
     if (!this.alive) return;
@@ -48,18 +58,21 @@ export class Flight {
         ),
       );
       const gap = gapFor(index);
+      const golden = index === this.nextGolden;
+      if (golden) this.nextGolden += this.randomInterval(6, 8);
       this.gates.push({
         index,
         worldX: WORLD.firstGateX + (index - 1) * WORLD.spacing,
         center,
         gap,
         passed: false,
-        seed: index % 3 !== 0,
+        seed: !golden && index % 3 !== 0,
+        golden,
         collected: false,
         seedY:
           center +
           (this.rng() > 0.5 ? 1 : -1) *
-            Math.min(38, gap / 2 - WORLD.halfHeight - 35),
+            Math.min(golden ? 24 : 38, gap / 2 - WORLD.halfHeight - 35),
       });
       this.previousCenter = center;
     }
@@ -76,6 +89,7 @@ export class Flight {
     this.accumulator = 0;
   }
   private substep(dt: number, targetWind: number) {
+    if (this.doubleTicks > 0) this.doubleTicks--;
     this.time += dt;
     this.flapAge += dt;
     this.wind +=
@@ -91,6 +105,7 @@ export class Flight {
       this.y + WORLD.halfHeight >= WORLD.height
     ) {
       this.alive = false;
+      this.doubleTicks = 0;
       return;
     }
     for (const gate of this.gates) {
@@ -102,9 +117,26 @@ export class Flight {
           this.y + WORLD.halfHeight >= gate.center + gate.gap / 2)
       ) {
         this.alive = false;
+        this.doubleTicks = 0;
         return;
       }
     }
+    // Consume all Golden Seeds before awarding ANY eligible points in this step.
+    // Integer physics ticks give exactly eight active seconds, with no drift.
+    for (const gate of this.gates) {
+      const x = gate.worldX - this.distance;
+      if (
+        gate.golden &&
+        !gate.collected &&
+        Math.abs(x + WORLD.gateWidth / 2 - WORLD.playerX) <
+          WORLD.halfWidth + 9 &&
+        Math.abs(gate.seedY - this.y) < WORLD.halfHeight + 11
+      ) {
+        gate.collected = true;
+        this.doubleTicks = Math.round(8 / WORLD.step);
+      }
+    }
+    const points = this.doubleTicks > 0 ? 2 : 1;
     for (const gate of this.gates) {
       const x = gate.worldX - this.distance;
       if (
@@ -113,7 +145,7 @@ export class Flight {
       ) {
         gate.passed = true;
         this.passed++;
-        this.score++;
+        this.score += points;
       }
       if (
         gate.seed &&
@@ -124,7 +156,7 @@ export class Flight {
       ) {
         gate.collected = true;
         this.seeds++;
-        this.score++;
+        this.score += points;
       }
     }
     this.gates = this.gates.filter(

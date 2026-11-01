@@ -1,0 +1,45 @@
+{
+  "totalBytes": 408330,
+  "files": [
+    {
+      "path": "dist/assets/index-B38mkoaT.css",
+      "bytes": 18322,
+      "sha256": "f3da2e37a8202a35469ea1e12c32cb1b09597ad59dcf15556188fa2d9188a289"
+    },
+    {
+      "path": "dist/assets/index-DkCgX5Vi.js",
+      "bytes": 228207,
+      "sha256": "3ff9db1b29b3de9bf3dd064a43cebd8a6beeb0a302f46c5ef9826f73b4e5a601"
+    },
+    {
+      "path": "dist/favicon.svg",
+      "bytes": 631,
+      "sha256": "b7dce6f2dbb2928c1db5c1443846e36f5bbe3271c77c268d82c75a603f0045a5"
+    },
+    {
+      "path": "dist/fonts/OFL.txt",
+      "bytes": 4385,
+      "sha256": "580df76c95a1ec5ab878ceb25bb3d85c6a076804e9c970c8c6972aea775fdf65"
+    },
+    {
+      "path": "dist/fonts/nunito-latin.woff2",
+      "bytes": 39128,
+      "sha256": "ba344451eab25b217a165363b1982048a5e5830a0daf36577973955a04cac793"
+    },
+    {
+      "path": "dist/fonts/nunito-vietnamese.woff2",
+      "bytes": 13096,
+      "sha256": "61e5958cf3c731423456b31739aa454317ea3bdcb205dd87090e94f632c3642b"
+    },
+    {
+      "path": "dist/index.html",
+      "bytes": 2134,
+      "sha256": "dd61346f53b4b583cce9db6617f6baf7f19bb840779f99938a536cf6b4d03624"
+    },
+    {
+      "path": "dist/share.png",
+      "bytes": 102427,
+      "sha256": "82e83a8241b3a8b8e03a088f25363247995a32c76183a2344e7a9a4d334e5c33"
+    }
+  ]
+}

@@ -19,7 +19,7 @@ try {
     const markup = document.createElement("div");
     markup.id = "share";
     markup.innerHTML =
-      '<div><div style="font-size:20px;margin-bottom:40px;color:#53664c;font-weight:800">Squeekchain · Genesis Code Lane</div><h1 style="font-size:88px;line-height:1.02;margin:0 0 30px">Squeek<br><span style="color:#53664c">&amp; Glide</span></h1><p style="font-size:24px;margin:0">Bạn cầm lái. Hamster thật tạo gió.</p></div>';
+      '<div><div style="font-size:20px;margin-bottom:40px;color:#53664c;font-weight:800">Squeekchain · Genesis Code Lane</div><h1 style="font-size:88px;line-height:1.02;margin:0 0 30px">Squeek<br><span style="color:#53664c">&amp; Glide</span></h1><p style="font-size:24px;margin:0;max-width:410px">You pilot.<br>A real hamster powers the wind.</p></div>';
     Object.assign(markup.style, {
       width: "1200px",
       height: "630px",
@@ -44,7 +44,7 @@ try {
     });
     markup.append(canvas);
     const footer = document.createElement("div");
-    footer.textContent = "Một chiếc hộp nhỏ. Một làn gió thật.";
+    footer.textContent = "A little box. Real hamster wind.";
     Object.assign(footer.style, {
       position: "absolute",
       bottom: "36px",

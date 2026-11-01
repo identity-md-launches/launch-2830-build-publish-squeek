@@ -9,12 +9,7 @@ export interface Reading {
   expiresAt: number;
 }
 export type SignalKind =
-  | "connecting"
-  | "ready"
-  | "stale"
-  | "invalid"
-  | "error"
-  | "hidden";
+  "connecting" | "ready" | "stale" | "invalid" | "error" | "hidden";
 export interface SignalState {
   kind: SignalKind;
   reading: Reading | null;
@@ -29,28 +24,28 @@ export function validateStatus(data: unknown, now = Date.now()): SignalState {
     message,
   });
   if (!record(data) || data.schemaVersion !== 1)
-    return invalid("Phiên bản dữ liệu chưa được hỗ trợ");
+    return invalid("Unsupported wheel data. Waiting for a valid reading.");
   const m = data.measurement;
-  if (!record(m)) return invalid("Chưa có dữ liệu bánh xe");
+  if (!record(m)) return invalid("Wheel data missing. Reconnecting...");
   if (m.provenance !== "hardware")
-    return invalid("Đang chờ dữ liệu từ hamster thật");
+    return invalid("Waiting for real hardware data...");
   if (m.coreStatus === "COUNTER_FAULT")
-    return invalid("Cảm biến bánh xe đang gặp lỗi");
+    return invalid("Wheel sensor fault. Waiting for recovery.");
   if (m.coreStatus !== "ACTIVE" && m.coreStatus !== "IDLE")
-    return invalid("Trạng thái bánh xe không hợp lệ");
+    return invalid("Unknown wheel status. Reconnecting...");
   if (
     typeof m.rpmMilli !== "number" ||
     !Number.isSafeInteger(m.rpmMilli) ||
     m.rpmMilli < 0
   )
-    return invalid("Số đo bánh xe không hợp lệ");
+    return invalid("Invalid RPM reading. Reconnecting...");
   if (
     typeof m.receivedAt !== "string" ||
     !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(
       m.receivedAt,
     )
   )
-    return invalid("Không xác định được thời điểm đo");
+    return invalid("Missing measurement time. Reconnecting...");
   const [year, month, day] = m.receivedAt.slice(0, 10).split("-").map(Number);
   if (
     month < 1 ||
@@ -58,7 +53,7 @@ export function validateStatus(data: unknown, now = Date.now()): SignalState {
     day < 1 ||
     day > new Date(Date.UTC(year, month, 0)).getUTCDate()
   )
-    return invalid("Ngày đo không hợp lệ");
+    return invalid("Invalid measurement date. Reconnecting...");
   const receivedAt = Date.parse(m.receivedAt);
   if (
     !Number.isFinite(receivedAt) ||
@@ -67,15 +62,15 @@ export function validateStatus(data: unknown, now = Date.now()): SignalState {
     !Number.isFinite(m.staleAfterSeconds) ||
     m.staleAfterSeconds <= 0
   )
-    return invalid("Thời hạn dữ liệu không hợp lệ");
+    return invalid("Invalid data expiry. Reconnecting...");
   const expiresAt = receivedAt + m.staleAfterSeconds * 1_000;
   if (!Number.isFinite(expiresAt))
-    return invalid("Thời hạn dữ liệu không hợp lệ");
+    return invalid("Invalid data expiry. Reconnecting...");
   if (m.freshness !== "online" || now >= expiresAt)
     return {
       kind: "stale",
       reading: null,
-      message: "Dữ liệu đã cũ · đang kết nối lại",
+      message: "Stale wheel data. Reconnecting...",
     };
   return {
     kind: "ready",
@@ -85,8 +80,7 @@ export function validateStatus(data: unknown, now = Date.now()): SignalState {
       receivedAt,
       expiresAt,
     },
-    message:
-      m.coreStatus === "IDLE" ? "Hamster đang nghỉ" : "Hamster đang chạy",
+    message: m.coreStatus === "IDLE" ? "Hamster resting" : "Running",
   };
 }
 export function isFresh(state: SignalState, now = Date.now()): boolean {
@@ -113,7 +107,7 @@ export class HardwareSignal {
   state: SignalState = {
     kind: "connecting",
     reading: null,
-    message: "Đang kết nối bánh xe…",
+    message: "Connecting to the wheel...",
   };
   private fetcher: typeof fetch;
   private now: () => number;
@@ -156,7 +150,7 @@ export class HardwareSignal {
       this.publish({
         kind: "stale",
         reading: null,
-        message: "Dữ liệu đã cũ · đang kết nối lại",
+        message: "Stale wheel data. Reconnecting...",
       });
     }
     this.ageTimer = this.timer(this.age, 200);
@@ -174,8 +168,8 @@ export class HardwareSignal {
       kind: this.hidden ? "hidden" : "connecting",
       reading: null,
       message: this.hidden
-        ? "Tạm dừng khi rời trang"
-        : "Đang nhận dữ liệu mới…",
+        ? "Paused while this tab is hidden."
+        : "Reconnecting...",
     });
     if (!this.hidden && !this.inFlight) this.schedule(0);
   }
@@ -228,7 +222,7 @@ export class HardwareSignal {
       this.publish({
         kind: "error",
         reading: null,
-        message: "Mất kết nối · đang thử lại",
+        message: "Connection lost. Reconnecting...",
       });
     } finally {
       if (this.timeout) this.clear(this.timeout);

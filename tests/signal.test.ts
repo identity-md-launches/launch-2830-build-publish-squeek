@@ -29,7 +29,7 @@ test("valid hardware ACTIVE and IDLE only, thousandths conversion and exact expi
   assert.equal(isFresh(result, NOW + 120000), false);
   assert.equal(
     validateStatus(status({ coreStatus: "IDLE", rpmMilli: 0 }), NOW).message,
-    "Hamster đang nghỉ",
+    "Hamster resting",
   );
 });
 test("unknown schemas, null, arrays, malformed measurements and all untrusted sources are rejected", () => {

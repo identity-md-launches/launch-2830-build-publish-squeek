@@ -1,0 +1,180 @@
+{
+  "limitBytes": 8388608,
+  "changedFileBytesExcludingThisReport": 1344886,
+  "reportBytes": 3625,
+  "totalAddedOrReplacedFileBytes": 1348511,
+  "withinBudget": true,
+  "protectedPathsUnchanged": true,
+  "ignoreChangeBudget": "artifacts/path-budget.json",
+  "noDependencyDirectoriesOrArchivesAdded": true,
+  "noSubmodules": true,
+  "relativeExportAssetsVerified": true,
+  "developmentFixturesAbsentFromExport": true,
+  "englishRuntimeAndReadmeAuditPassed": true,
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 955
+    },
+    {
+      "path": "DESIGN.md",
+      "bytes": 15311
+    },
+    {
+      "path": "NOTICE.md",
+      "bytes": 1581
+    },
+    {
+      "path": "README.md",
+      "bytes": 12630
+    },
+    {
+      "path": "artifacts/browser-results.json",
+      "bytes": 3117
+    },
+    {
+      "path": "artifacts/chromium-viewports.json",
+      "bytes": 5563
+    },
+    {
+      "path": "artifacts/design-probe.json",
+      "bytes": 31834
+    },
+    {
+      "path": "artifacts/export-manifest.json",
+      "bytes": 1315
+    },
+    {
+      "path": "artifacts/github-about.json",
+      "bytes": 246
+    },
+    {
+      "path": "artifacts/guide-licenses.txt",
+      "bytes": 11964
+    },
+    {
+      "path": "artifacts/live-observation.json",
+      "bytes": 242
+    },
+    {
+      "path": "artifacts/path-budget.json",
+      "bytes": 1266
+    },
+    {
+      "path": "artifacts/powerup-results.json",
+      "bytes": 394
+    },
+    {
+      "path": "artifacts/screenshots/double-points-landscape.png",
+      "bytes": 27998
+    },
+    {
+      "path": "artifacts/screenshots/double-points-portrait-200.png",
+      "bytes": 68792
+    },
+    {
+      "path": "artifacts/screenshots/double-points.png",
+      "bytes": 53009
+    },
+    {
+      "path": "artifacts/screenshots/reconnecting.png",
+      "bytes": 46062
+    },
+    {
+      "path": "artifacts/screenshots/result-landscape-200.png",
+      "bytes": 30279
+    },
+    {
+      "path": "artifacts/screenshots/start-390.png",
+      "bytes": 172297
+    },
+    {
+      "path": "artifacts/screenshots/start-desktop.png",
+      "bytes": 142930
+    },
+    {
+      "path": "artifacts/screenshots/start-focus.png",
+      "bytes": 74966
+    },
+    {
+      "path": "artifacts/validation.md",
+      "bytes": 23916
+    },
+    {
+      "path": "artifacts/webkit-viewports.json",
+      "bytes": 5620
+    },
+    {
+      "path": "dist/assets/index-B38mkoaT.css",
+      "bytes": 18322
+    },
+    {
+      "path": "dist/assets/index-DkCgX5Vi.js",
+      "bytes": 228207
+    },
+    {
+      "path": "dist/index.html",
+      "bytes": 2134
+    },
+    {
+      "path": "dist/share.png",
+      "bytes": 102427
+    },
+    {
+      "path": "index.html",
+      "bytes": 2035
+    },
+    {
+      "path": "public/share.png",
+      "bytes": 102427
+    },
+    {
+      "path": "scripts/capture-share.mjs",
+      "bytes": 2434
+    },
+    {
+      "path": "scripts/validate-browser.mjs",
+      "bytes": 34088
+    },
+    {
+      "path": "scripts/validate-powerup.mjs",
+      "bytes": 13208
+    },
+    {
+      "path": "src/App.tsx",
+      "bytes": 26030
+    },
+    {
+      "path": "src/Icons.tsx",
+      "bytes": 5714
+    },
+    {
+      "path": "src/game/art.ts",
+      "bytes": 13081
+    },
+    {
+      "path": "src/game/engine.ts",
+      "bytes": 7783
+    },
+    {
+      "path": "src/live/signal.ts",
+      "bytes": 8104
+    },
+    {
+      "path": "src/style.css",
+      "bytes": 23531
+    },
+    {
+      "path": "tests/game.test.ts",
+      "bytes": 7878
+    },
+    {
+      "path": "tests/golden.test.ts",
+      "bytes": 7145
+    },
+    {
+      "path": "tests/signal.test.ts",
+      "bytes": 8051
+    }
+  ]
+}

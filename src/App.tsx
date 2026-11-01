@@ -8,7 +8,7 @@ import { drawCraft, drawScenery, renderGame } from "./game/art";
 const initialSignal: SignalState = {
   kind: "connecting",
   reading: null,
-  message: "Đang kết nối bánh xe…",
+  message: "Connecting to the wheel...",
 };
 type View = {
   phase: Phase;
@@ -16,8 +16,7 @@ type View = {
   reason: string | null;
   countdown: number | null;
   score: number;
-  passed: number;
-  seeds: number;
+  doubleRemaining: number;
   wind: number;
 };
 function viewOf(s: Session): View {
@@ -27,13 +26,12 @@ function viewOf(s: Session): View {
     reason: s.pauseReason,
     countdown: s.countdown === null ? null : Math.ceil(s.countdown),
     score: s.flight.score,
-    passed: s.flight.passed,
-    seeds: s.flight.seeds,
+    doubleRemaining: Math.ceil(s.flight.doubleRemaining * 10) / 10,
     wind: Math.round(s.flight.wind * 100) / 100,
   };
 }
-const rpmFormat = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 });
-const windFormat = new Intl.NumberFormat("vi-VN", {
+const rpmFormat = new Intl.NumberFormat("en", { maximumFractionDigits: 1 });
+const windFormat = new Intl.NumberFormat("en", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
 });
@@ -54,6 +52,9 @@ export default function App() {
   const [best, setBest] = useState(bestFromBrowser);
   const bestRef = useRef(best);
   const [storageOK, setStorageOK] = useState(true);
+  const bestScope = storageOK
+    ? "saved on this device"
+    : "kept for this session only";
   const [help, setHelp] = useState(false);
   const canvas = useRef<HTMLCanvasElement>(null);
   const scenery = useRef<HTMLCanvasElement>(null);
@@ -65,6 +66,10 @@ export default function App() {
   const helpTrigger = useRef<HTMLButtonElement>(null);
   const frameReset = useRef(true);
   const ready = isFresh(signal);
+  const signalMessage =
+    signal.kind === "ready" && !ready
+      ? "Stale wheel data. Reconnecting..."
+      : signal.message;
   const inRun = view.phase === "playing" || view.phase === "crashed";
   const running =
     view.phase === "playing" && !view.paused && view.countdown === null;
@@ -146,7 +151,13 @@ export default function App() {
         const c = canvas.current.getContext("2d");
         if (c) renderGame(c, s, reduceMotion);
       }
-      if (wheel.current && fresh && !document.hidden && !reduceMotion) {
+      if (
+        wheel.current &&
+        fresh &&
+        current.reading?.coreStatus === "ACTIVE" &&
+        !document.hidden &&
+        !reduceMotion
+      ) {
         wheelAngle = (wheelAngle + (current.reading?.rpm ?? 0) * 6 * dt) % 360;
         wheel.current.setAttribute("transform", `rotate(${wheelAngle} 22 21)`);
       }
@@ -231,18 +242,18 @@ export default function App() {
     session.flap();
   }
   const connectionLabel = ready
-    ? "Đã kết nối"
+    ? "Connected"
     : signal.kind === "connecting"
-      ? "Đang kết nối"
-      : "Chờ tín hiệu";
+      ? "Connecting"
+      : "Waiting for signal";
   const pausedTitle =
     view.reason === "orientation"
-      ? "Màn hình đã xoay"
+      ? "Screen rotated"
       : view.reason === "manual"
-        ? "Nghỉ một nhịp"
+        ? "Paused"
         : !ready
-          ? "Đang chờ làn gió"
-          : "Tạm dừng chuyến bay";
+          ? "Waiting for the wheel"
+          : "Pause";
   return (
     <>
       <header className="header">
@@ -261,7 +272,7 @@ export default function App() {
             ref={helpTrigger}
           >
             <Icon name="help" />
-            <span>Cách chơi</span>
+            <span>How to play</span>
           </button>
         </div>
       </header>
@@ -272,12 +283,19 @@ export default function App() {
         >
           <canvas className="landscape" ref={scenery} aria-hidden="true" />
           <div className="stage-top">
-            <div className="best">
-              <Icon name="medal" />
-              <span>
-                Kỷ lục <strong>{best}</strong>
-              </span>
-            </div>
+            {view.phase === "start" && (
+              <div
+                className="best"
+                title={`Best score ${bestScope}`}
+                aria-label={`Best score ${best}, ${bestScope}`}
+              >
+                <Icon name="medal" />
+                <span>
+                  Best score <strong>{best}</strong>{" "}
+                  <span className="device-label">· this device</span>
+                </span>
+              </div>
+            )}
             <span className={`connection ${ready ? "connected" : ""}`}>
               <span className="status-dot" />
               {connectionLabel}
@@ -289,7 +307,9 @@ export default function App() {
                 <h1>
                   Squeek <span>&amp; Glide</span>
                 </h1>
-                <p className="intro">Bạn cầm lái. Hamster thật tạo gió.</p>
+                <p className="intro">
+                  You pilot. A real hamster powers the wind.
+                </p>
                 <div className="start-action">
                   <button
                     className="primary"
@@ -298,11 +318,11 @@ export default function App() {
                     disabled={!ready}
                   >
                     <Icon name="play" />
-                    <span>Bắt đầu bay</span>
+                    <span>Start flying</span>
                     <Icon name="arrow" />
                   </button>
                   <p className="control-hint">
-                    Chạm hoặc nhấn <kbd>Space</kbd> để vỗ cánh
+                    Tap or press <kbd>Space</kbd> to flap
                   </p>
                 </div>
               </div>
@@ -332,7 +352,7 @@ export default function App() {
                   width="600"
                   height="440"
                   role="img"
-                  aria-label="Hamster má cam lái chiếc hộp giấy vàng, với cánh vỏ hạt dưa đen và thanh gỗ nhỏ"
+                  aria-label="An orange-cheeked hamster pilots a cardboard box with seed-shell wings and wooden braces"
                 />
               </div>
             </div>
@@ -344,9 +364,8 @@ export default function App() {
                 <aside className="flight-notes" aria-hidden="true">
                   <span className="note-line" />
                   <p>
-                    Một chiếc hộp nhỏ.
-                    <br />
-                    Cả bầu trời rộng.
+                    A little box.
+                    <br />A whole sky.
                   </p>
                   <svg width="98" height="80" viewBox="0 0 98 80" fill="none">
                     <path
@@ -363,7 +382,7 @@ export default function App() {
                   ref={game}
                   tabIndex={0}
                   role="group"
-                  aria-label="Vùng bay. Nhấn Space để vỗ cánh, Escape để tạm dừng."
+                  aria-label="Flight area. Press Space to flap, Escape to pause."
                   aria-describedby="flight-controls"
                   onKeyDown={(e) => {
                     if (e.target !== e.currentTarget) return;
@@ -396,28 +415,68 @@ export default function App() {
                     aria-hidden="true"
                   />
                 </div>
-                <div className="game-hud" aria-hidden={view.phase === "over"}>
-                  <output
-                    className="score"
-                    aria-label="Điểm chuyến bay"
-                    aria-live="off"
-                  >
-                    {view.score}
-                  </output>
-                  {inRun && !view.paused && view.countdown === null && (
-                    <button
-                      className="pause-button"
-                      aria-label="Tạm dừng chuyến bay"
-                      type="button"
-                      onClick={() => {
-                        session.pause("manual");
-                        setView(viewOf(session));
-                      }}
-                    >
-                      <Icon name="pause" />
-                    </button>
-                  )}
-                </div>
+                {view.phase !== "over" && (
+                  <div className="game-hud">
+                    <div className="score-stack">
+                      <div className="score-cluster">
+                        <output
+                          className="score"
+                          aria-label="Score"
+                          aria-live="off"
+                        >
+                          {view.score}
+                        </output>
+                        {view.doubleRemaining > 0 && (
+                          <span
+                            className="double-badge"
+                            aria-label={`Double points: ${view.doubleRemaining.toFixed(1)} seconds remaining`}
+                          >
+                            <svg viewBox="0 0 36 36" aria-hidden="true">
+                              <circle
+                                className="timer-track"
+                                cx="18"
+                                cy="18"
+                                r="15"
+                              />
+                              <circle
+                                className="timer-ring"
+                                cx="18"
+                                cy="18"
+                                r="15"
+                                pathLength="100"
+                                strokeDasharray={`${(view.doubleRemaining / 8) * 100} 100`}
+                                transform="rotate(-90 18 18)"
+                              />
+                            </svg>
+                            <strong>x2</strong>
+                            <span>{view.doubleRemaining.toFixed(1)}s</span>
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className="run-best"
+                        title={`Best score ${bestScope}`}
+                        aria-label={`Best score ${best}, ${bestScope}`}
+                      >
+                        Best score {best}{" "}
+                        <span className="device-label">· this device</span>
+                      </span>
+                    </div>
+                    {inRun && !view.paused && view.countdown === null && (
+                      <button
+                        className="pause-button"
+                        aria-label="Pause"
+                        type="button"
+                        onClick={() => {
+                          session.pause("manual");
+                          setView(viewOf(session));
+                        }}
+                      >
+                        <Icon name="pause" />
+                      </button>
+                    )}
+                  </div>
+                )}
                 {inRun && view.paused && (
                   <div className="game-overlay">
                     <div className="pause-card">
@@ -425,10 +484,10 @@ export default function App() {
                       <h2>{pausedTitle}</h2>
                       <p>
                         {!ready
-                          ? "Chuyến bay được giữ nguyên. Tự tiếp tục khi có dữ liệu mới."
+                          ? "Your flight is frozen. Waiting for fresh hardware data."
                           : view.reason === "orientation"
-                            ? "Tỷ lệ thế giới vẫn giữ nguyên. Sẵn sàng bay tiếp?"
-                            : "Chiếc hộp vẫn chờ bạn ở đây."}
+                            ? "Your flight is paused. Resume when you are ready."
+                            : "Your flight is ready when you are."}
                       </p>
                       {ready && (
                         <button
@@ -436,7 +495,7 @@ export default function App() {
                           type="button"
                           onClick={resume}
                         >
-                          Tiếp tục bay <Icon name="play" />
+                          Resume <Icon name="play" />
                         </button>
                       )}
                     </div>
@@ -447,7 +506,7 @@ export default function App() {
                     <div className="countdown" aria-hidden="true">
                       {view.countdown}
                     </div>
-                    <p>Chuẩn bị vỗ cánh</p>
+                    <p>Get ready to flap</p>
                   </div>
                 )}
                 {view.phase === "over" && (
@@ -455,28 +514,28 @@ export default function App() {
                     className="game-overlay over-overlay"
                     tabIndex={0}
                     role="region"
-                    aria-label="Kết quả chuyến bay"
+                    aria-label="Flight results"
                   >
                     <div className="result">
                       <span className="result-icon">
                         <Icon name="medal" />
                       </span>
-                      <h2>Hạ cánh rồi!</h2>
-                      <p>Gấp lại dù, bay thêm lần nữa?</p>
+                      <h2>Touchdown!</h2>
+                      <p>Pack the parachute. Try another flight.</p>
                       <div className="result-numbers">
                         <div>
-                          <span>Điểm chuyến bay</span>
+                          <span>Score</span>
                           <strong>{view.score}</strong>
                         </div>
                         <div>
-                          <span>Kỷ lục của bạn</span>
+                          <span>
+                            Best score
+                            <br />
+                            <span className="device-label">on this device</span>
+                          </span>
                           <strong>{best}</strong>
                         </div>
                       </div>
-                      <p className="score-detail">
-                        {view.passed} khe vượt qua · {view.seeds} hạt hướng
-                        dương
-                      </p>
                       <button
                         className="primary"
                         type="button"
@@ -484,12 +543,12 @@ export default function App() {
                         disabled={!ready}
                         ref={retry}
                       >
-                        Bay lần nữa <Icon name="arrow" />
+                        Fly again <Icon name="arrow" />
                       </button>
                       <p className="local-note">
                         {storageOK
-                          ? "Kỷ lục được lưu trên trình duyệt này."
-                          : "Trình duyệt không cho lưu. Kỷ lục chỉ giữ trong phiên này."}
+                          ? "Best score saved on this device."
+                          : "Storage unavailable. Best score kept for this session only."}
                       </p>
                     </div>
                   </div>
@@ -497,9 +556,9 @@ export default function App() {
                 <aside className="flight-notes right-note" aria-hidden="true">
                   <Icon name="seed" />
                   <p>
-                    Thêm một hạt,
+                    Catch a seed,
                     <br />
-                    thêm một điểm.
+                    earn a point.
                   </p>
                 </aside>
               </div>
@@ -507,12 +566,34 @@ export default function App() {
             </>
           )}
           <div className="live-strip">
-            <div className="live-source">
-              <Wheel wheelRef={wheel} />
+            <div className={`live-source ${ready ? "has-reading" : ""}`}>
+              <Wheel
+                wheelRef={wheel}
+                state={
+                  !ready
+                    ? "unknown"
+                    : signal.reading?.coreStatus === "IDLE"
+                      ? "resting"
+                      : "running"
+                }
+                moving={
+                  ready &&
+                  signal.reading?.coreStatus === "ACTIVE" &&
+                  signal.reading.rpm > 0
+                }
+              />
               <div>
-                <span className="source-title">Gió từ hamster thật</span>
+                <span className="source-title">
+                  {ready
+                    ? signal.reading?.coreStatus === "IDLE"
+                      ? "Resting"
+                      : "Running"
+                    : "Real hamster wind"}
+                </span>
                 <span className="source-state" role="status" aria-live="polite">
-                  {signal.message}
+                  {signalMessage === "Running"
+                    ? "Wheel connected"
+                    : signalMessage}
                 </span>
               </div>
             </div>
@@ -541,7 +622,7 @@ export default function App() {
                     : "—"}
                   {ready ? "×" : ""}
                 </strong>
-                <span>gió</span>
+                <span>wind</span>
               </div>
             </div>
           </div>
@@ -550,37 +631,42 @@ export default function App() {
           {view.phase !== "start" && (
             <span className="control-legend">
               <kbd>Space</kbd>
-              <span>hoặc chạm để bay</span>
+              <span>or tap to flap</span>
             </span>
           )}
           <span>
             <span className="gate-symbol" aria-hidden="true" />
-            Qua khe <strong>+1</strong>
+            Pass a pair <strong>+1</strong>
           </span>
           <span>
             <Icon name="seed" />
-            Nhặt hạt <strong>+1</strong>
+            Collect a seed <strong>+1</strong>
           </span>
         </div>
       </main>
       <footer className="footer">
-        <span>Một chuyến bay cùng Squeekchain</span>
+        <span>A flight with Squeekchain</span>
         <a
           href="https://docs.squeekchain.com/developers/api/"
           target="_blank"
           rel="noreferrer"
         >
-          Nguồn dữ liệu <span aria-hidden="true">↗</span>
+          Data source <span aria-hidden="true">↗</span>
         </a>
       </footer>
       <p className="sr-only" role="status" aria-live="polite">
         {view.phase === "over"
-          ? `Chuyến bay kết thúc. ${view.score} điểm. Kỷ lục ${best}.`
+          ? `Flight over. Score ${view.score}. Best score ${best}, ${bestScope}.`
           : inRun && view.paused
-            ? "Chuyến bay tạm dừng."
+            ? "Flight paused."
             : view.countdown !== null
-              ? `Bay tiếp sau ${view.countdown}.`
+              ? `Flight begins in ${view.countdown}.`
               : ""}
+      </p>
+      <p className="sr-only" role="status">
+        {view.doubleRemaining > 0
+          ? "Double points active. New points count twice for eight seconds of flying."
+          : ""}
       </p>
       <dialog
         ref={dialog}
@@ -599,32 +685,39 @@ export default function App() {
             type="button"
             className="dialog-close utility"
             onClick={closeHelp}
-            aria-label="Đóng hướng dẫn"
+            aria-label="Close instructions"
           >
             <Icon name="close" />
           </button>
-          <h2 id="help-title">Một chút trước khi bay</h2>
+          <h2 id="help-title">How to play</h2>
           <ol>
             <li>
-              <strong>Chạm để vỗ cánh.</strong> Chạm vào vùng bay hoặc nhấn
-              Space. Thả tay để hạ xuống.
+              <strong>Tap or press Space to flap.</strong> Tap or click the
+              flight area. Each press flaps once; release to fall.
             </li>
             <li>
-              <strong>Luồn qua khe bìa.</strong> Mỗi khe được 1 điểm. Hạt hướng
-              dương thêm 1 điểm. Chạm bìa hoặc mép trời là hạ cánh.
+              <strong>Dodge the cardboard.</strong> Pass a pair for +1. Collect
+              a sunflower seed for +1. Touching a wall or the sky’s edge ends
+              your flight.
             </li>
             <li>
-              <strong>Đón gió thật.</strong> Bánh xe quay nhanh, gió mạnh hơn.
-              Hamster nghỉ, bạn vẫn bay chậm. Mất tín hiệu, chuyến bay tự tạm
-              dừng.
+              <strong>Catch a Golden Seed.</strong> The glowing x2 seed doubles
+              new points for 8 seconds of flying. Another refreshes the timer.
+              Pauses freeze it.
+            </li>
+            <li>
+              <strong>Ride the real wind.</strong> Faster wheel, stronger wind.
+              Hamster resting? Keep flying at minimum speed. Signal lost? Your
+              flight pauses until fresh hardware data returns.
             </li>
           </ol>
           <p>
-            10 khe đầu rộng. Khe mới hẹp dần đến khe 30. Nhấn Escape hoặc nút
-            tạm dừng để nghỉ.
+            The first 10 gaps are wide; new gaps narrow until pair 30. Golden
+            Seeds first appear in pairs 11–18, then every 6–8 pairs. Press
+            Escape or Pause to take a break.
           </p>
           <button type="button" className="primary" onClick={closeHelp}>
-            Đã hiểu <Icon name="check" />
+            Close instructions <Icon name="check" />
           </button>
         </div>
       </dialog>

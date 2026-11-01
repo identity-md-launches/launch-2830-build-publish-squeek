@@ -1,12 +1,14 @@
 # Squeek & Glide
 
-A Vietnamese, side-view endless flight game for Squeekchain Genesis Code Lane. You fly a handmade cardboard box; a real hamster's wheel supplies the wind. The complete static website is in **`dist/`**. Editable React, TypeScript and original Canvas/SVG artwork are included.
+A handmade 2D flying game powered by real Squeekchain hamster activity. Tap to fly, dodge cardboard obstacles, and collect Golden Seeds for double points.
 
-**Playing requires a fresh, valid hardware reading from Squeekchain.** There is no practice mode, simulated fallback, speed slider, wallet, backend or private configuration. During a service outage the website loads normally and explains why play is waiting.
+You pilot. A real hamster powers the wind.
+
+This release continues the same [repository](https://github.com/identity-md-launches/launch-2830-build-publish-squeek) and [game URL](https://squeek-glide-ban-lai-hamster-tao.imd.site/). The editable React/TypeScript source and the complete IPFS-compatible static export in `dist/` are included. Public play requires fresh, valid hardware data. There is no practice mode, account, wallet, backend, or online leaderboard.
 
 ## Install, preview and rebuild
 
-Use Node 22.12+ or Node 24 (validated with Node 24.21.0), and npm.
+Use Node 22.12+ or Node 24 and npm. The existing package manifest and lockfile are unchanged.
 
 ```sh
 npm ci
@@ -16,11 +18,9 @@ npm run build
 npm run preview -- --port 4173
 ```
 
-Open the preview URL printed by Vite. `npm run dev` runs the source development server. `npm run build` replaces `dist/`; keep the entire output together, including fonts, favicon and share image. `vite.config.ts` sets `base: './'`, and the finished export uses relative asset URLs. Serve over HTTP(S), including under a gateway subpath; do not open the HTML through `file://`.
+`npm run dev` previews the source. `npm run build` replaces `dist/`; retain the whole export, including its local fonts, favicon, share image, and hashed assets. The existing Vite configuration uses `base: './'`. Serve the export over HTTP(S), including at a gateway subpath; opening `index.html` with `file://` is unsupported.
 
-The publisher serves the supplied export; it does not rebuild it. No publishing command, remote hosting configuration or live domain is required here. The provided `dist/` is the publication handoff.
-
-For a continuation assignment that prohibits creating `node_modules/` in the checkout, use an external build copy:
+If a continuation assignment prohibits `node_modules/` in the repository, build outside it:
 
 ```sh
 SQUEEK_BUILD_DIR=$(mktemp -d /tmp/squeek-glide.XXXXXX)
@@ -31,76 +31,88 @@ npm --prefix "$SQUEEK_BUILD_DIR" test
 npm --prefix "$SQUEEK_BUILD_DIR" run build
 ```
 
-Then replace the checkout's `dist/` with that copy's `dist/`. Do not append to an older export: remove obsolete hashed assets. Keep dependency folders, caches and browser downloads outside the submission at every nesting level. No ignore file was added or changed for this assignment; dependencies were installed only outside the repository. An ignore-file change in a future task needs its own explicit path budget.
+Replace the checkout's entire `dist/` with that build's `dist/`, removing obsolete hashed files. Keep all dependency folders, caches, browser downloads, and package archives outside the submission. The narrow `.gitignore` allowlist retains only the release evidence named in `artifacts/path-budget.json` (1 MiB aggregate artifact cap; 2 KiB ignore-file cap). Dependency/cache folders remain ignored at every depth.
 
-## Controls and round lifecycle
+To regenerate the English share illustration from the same Canvas artwork, run `node scripts/capture-share.mjs` after building, then build again to copy `public/share.png` into `dist/`.
 
-- Select **Bắt đầu bay** when the hardware connection is valid. A three-second countdown precedes flight.
-- Tap/click the game canvas, or focus the game and press **Space**, to flap. Gravity and flap impulse never change. Keyboard repeat, secondary touch pointers and compatibility click events do not produce extra flaps.
-- Each passed wall pair gives one point. Each collected sunflower seed gives one extra point. Scoring has no effect on wind or gap progression.
-- Touching cardboard or the ceiling/floor ends the round immediately. A striped candy-wrapper parachute unfolds for 1.8 seconds, followed by the final score, local best and **Bay lần nữa**. The parachute is cosmetic. With reduced motion the end sequence lasts 0.45 seconds.
-- **Escape**, the pause button, or **Cách chơi** can pause a run. Manual pauses require **Tiếp tục bay**. Closing help preserves an earlier manual pause.
-- Lost or unusable data freezes the world, scores, flaps and gameplay animation. Fresh data starts a new uninterrupted three-second countdown; any further signal loss cancels it.
-- Hidden tabs stop polling and invalidate the pending response. Returning requests fresh data before the countdown. Orientation changes also request fresh data and ask you to continue. Ordinary resizing changes presentation only.
+## Features and controls
 
-The personal best uses `squeek-glide.best.v1` in localStorage. Corrupt values become zero. If storage access or saving is denied, the current session remains playable and a new best stays in memory; the result explains that limitation. There is no shared leaderboard.
+- Select **Start flying** when a hardware reading is available. A three-second countdown precedes play.
+- **Tap/click the flight area or press Space to flap.** Each input gives one flap; release to fall. Holding, key repeat, secondary touch contacts, and compatibility click events do not add flaps.
+- Pass an obstacle pair for **+1** and collect an ordinary sunflower seed for **+1**. One prominent total appears during flight and on the result screen; the smaller best score is saved on this device.
+- A glowing **Golden Seed marked x2** gives no immediate points. It doubles new pair and ordinary-seed points for **8 seconds of active flight**. Another Golden Seed refreshes the duration to eight seconds. It never stacks or changes previously earned points.
+- Golden Seeds first appear in a randomly selected pair **11–18**, then every **6–8 pairs**. Each interval is selected once. The seed sits 24 world units above or below gap center and replaces that pair's ordinary seed.
+- The gold badge shows remaining time and a shrinking ring; a light gold trail marks the aircraft. Manual pause, help, signal loss, hidden tabs, orientation pauses, and all countdowns freeze the timer. Expiration, collision, and retry remove the effect.
+- **Pause** or **Escape** freezes a flight. **Resume** begins another three-second countdown. **How to play** opens a keyboard-accessible modal; closing it preserves an existing manual pause.
+- Cardboard, ceiling, or floor contact ends the round before any scoring in that physics step. A candy-wrapper parachute unfolds cosmetically, then **Fly again** starts a new flight. Reduced motion shortens the end sequence.
+- Lost or unusable data pauses automatically. A new valid hardware response starts a fresh three-second countdown. Hidden tabs invalidate pending readings and stop polling; returning fetches again. Rotation requests fresh data and asks you to resume. Ordinary resizing only changes presentation.
 
-## Hardware contract
+## Live hamster and wind
 
-Reference: [Squeekchain API documentation](https://docs.squeekchain.com/developers/api/). Only `GET https://api.squeekchain.com/v1/status` is read, without query parameters, credentials or a relay. The implementation validates the fields it consumes and ignores unrelated additional fields.
+Only `GET https://api.squeekchain.com/v1/status` is read, without credentials or query parameters. See the [Squeekchain API documentation](https://docs.squeekchain.com/developers/api/).
 
-A usable reading requires:
+A usable measurement has numeric `schemaVersion === 1`, `freshness === 'online'`, `provenance === 'hardware'`, `coreStatus === 'ACTIVE'` or `'IDLE'`, and a finite, safe, nonnegative integer `rpmMilli`. Its RFC3339 measurement time and positive expiry must be valid and fresh; impossible dates and more than five seconds of future skew are rejected. Missing data, non-hardware provenance, unknown schemas/statuses, counter faults, stale data, HTTP errors, and malformed responses never become sleeping/IDLE readings.
 
-- numeric `schemaVersion === 1` and a non-null object `measurement`;
-- `freshness === 'online'`, `provenance === 'hardware'`;
-- `coreStatus` exactly `ACTIVE` or `IDLE` (never `COUNTER_FAULT`);
-- a finite, safe, nonnegative integer `rpmMilli`, as specified by the API schema;
-- a valid RFC3339-style `receivedAt`, a finite positive `staleAfterSeconds`, and a measurement that has not expired. At most five seconds of future clock skew is tolerated; impossible calendar dates are rejected.
+- **ACTIVE:** the hamster runs inside a wheel. Continuous rotation uses measured RPM, including a complete stop at zero RPM. Numeric RPM and wind remain visible.
+- **IDLE:** the hamster curls up asleep with gentle breathing and the wheel stands still, even if the measurement retains a nonzero RPM. **Resting / Hamster resting** identifies this valid state. Flight targets its existing 1.0× minimum speed.
+- **Connecting or unusable data:** a disconnected signal symbol replaces the hamster, unavailable numbers show a dash, and an English message explains the state. There is no fabricated data fallback.
 
-Polling starts immediately and normally repeats on a five-second start-to-start cadence. The timeout is four seconds, with at most one request outstanding. Fetch/JSON/HTTP failures back off through 5, 10, 20, 40 and 60 seconds. HTTP 429/503 also honor the longer `Retry-After` delay, including HTTP-date form. A successful but unusable response keeps play paused and is polled again after five seconds. `cache: 'no-store'` avoids reusing a browser cache; `receivedAt + staleAfterSeconds` is still checked every 200 ms, every animation frame and at flap/start input. Expiration between polls cannot keep a round alive.
+`RPM = rpmMilli / 1000`. The unchanged `src/game/config.ts` maps 0–120 RPM to 1.0–2.2× wind, clamped. Flight wind uses the existing 0.67-second exponential smoothing; vertical gravity and flap impulse stay constant. Reduced motion stops the wheel, running paws, and breathing while preserving status text and essential gameplay.
 
-`RPM = rpmMilli / 1000`. `src/game/config.ts` contains the owner-editable mapping: 0–120 RPM maps to 1.0–2.2×, clamped. Fresh `IDLE` forces 1.0× and displays **Hamster đang nghỉ**, while the numeric RPM and wheel still represent the measurement. A zero-RPM wheel is stationary; the aircraft still travels at minimum speed. Valid wind changes use an exponential time constant of 0.67 seconds, reaching about 95% of the change after two seconds. No RPM-dependent vertical physics or obstacle dimensions exist.
+Polling normally starts every five seconds, with a four-second timeout and at most one request outstanding. Failures back off through 5/10/20/40/60 seconds; 429/503 honor a longer `Retry-After`. Successful unusable responses are retried every five seconds. Freshness is checked between requests, on animation frames, and at start/flap input. There is no server-side component in this repository.
 
-## World and fairness
+## Physics, fairness, and saved records
 
-All screens show the same **480 × 640** game world, fitted with a fixed 3:4 aspect ratio. Desktop side scenery reveals no extra approaching obstacles. The player remains at x=130; the world scrolls left at 120–264 units/second. The forgiving collision rectangle is 36 × 44 units and excludes decorative wings and ear tips.
+The existing world remains 480 × 640 at a fixed 3:4 ratio. Player x=130, gravity=720, flap impulse=−250, scrolling=120–264 units/second, and the forgiving 36 × 44 collision rectangle are unchanged. The cardboard box, wooden braces, watermelon-seed-shell wings, and striped candy-wrapper parachute remain the original editable artwork.
 
-Physics runs at 120 fixed substeps/second. A rendered frame can consume at most 250 ms of simulation; extra elapsed time is discarded instead of tunneling through a wall. Pause/resume discards the remainder and the first frame's elapsed time. Countdown time does not turn into physics catch-up.
+Obstacle pairs remain 64 units wide and 330 units apart, starting at x=640. The first ten gaps stay 250 units tall; gaps 11–30 narrow to 184, then stay fixed. Centers remain within 220–420 and shift by at most 52 units per pair. Spawning follows distance, never a wall-clock interval. Golden Seed placement leaves at least 46 units of edge clearance after accounting for the player hitbox in the narrowest gap.
 
-Gates are 64 units wide, spaced every 330 world units, with the first at x=640. Gap heights are immutable: gates 1–10 are 250 units high; gates 11–30 shrink linearly to 184; later gates stay at 184. Gap centers stay in [220, 420], moving at most 52 units between pairs, never during flight. Seeds are offset at most 38 units and have at least 35 units of edge clearance after accounting for the player hitbox. Decorative gnaw lines are inset into solid walls and do not imply safe collision openings.
+Physics uses 120 fixed steps per second and discards excessive frame elapsed time. The power-up uses 960 integer simulation ticks, avoiding floating-point timer drift. All collisions are checked first, all Golden Seed pickups second, then eligible points. The timer advances only with those active physics steps. Pause/resume discards accumulated remainder and the first resumed frame's elapsed time, preventing background time jumps.
 
-At maximum wind the clear horizontal interval between two wall encounters is `(330 - 64 - 36) / 264 = 0.871` seconds. Even the narrowest neighboring safe-center bands overlap by 88 vertical units (64 with an additional 12-unit margin on both sides). The deterministic pilot tests cover 4,500 gates, including maximum and alternating center shifts. If changing maximum wind, hitbox, gravity, flap impulse, gap bounds or spacing, rerun and extend the reachability tests together.
+Best scores retain the existing **`squeek-glide.best.v1`** localStorage key, so previous records survive this release. Invalid stored values are ignored. If saving is denied, the new best remains in memory for the session and the result explains the limitation.
 
-## Source map and continuation
+## Source map
 
-| File | Responsibility |
-| --- | --- |
-| `src/live/signal.ts` | Input validation, freshness, one-request poller, timeout/backoff, visibility epochs |
-| `src/game/config.ts` | Fixed world/physics parameters, owner-editable RPM mapping and gap progression |
-| `src/game/engine.ts` | Pure flight simulation, scoring, pause/countdown/end state, local best helpers |
-| `src/game/art.ts` | Original editable drawing paths: hamster, cardboard craft, seed-shell wings, candy wrapper, scenery, gates and seeds |
-| `src/App.tsx` | Browser integration, controls, screens, focus, hardware/wheel display and reduced-motion preference |
-| `src/Icons.tsx`, `src/style.css` | SVG UI elements and documented design tokens/components |
-| `tests/` | Deterministic simulation, parser, timeout and polling tests; no test data enters the production import graph |
-| `scripts/validate-browser.mjs` | Production export interaction checks with test-only response interception plus a separate real API observation |
-| `scripts/capture-share.mjs` | Recreates `public/share.png` from the game's own Canvas art; run after a build, then rebuild to copy the image into `dist/` |
-| `DESIGN.md`, `artifacts/validation.md` | Final implemented design and check evidence, fixes and limitations |
+| File                                   | Responsibility                                                                                                               |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `src/App.tsx`                          | English interface, game screens, one score, x2 badge, controls/focus, visibility/orientation integration                     |
+| `src/live/signal.ts`                   | Strict hardware validation, English signal states, freshness, polling/backoff/epochs                                         |
+| `src/game/engine.ts`                   | Fixed-step simulation, scheduled Golden Seeds, collision/scoring order, active-time power-up, sessions and best storage      |
+| `src/game/config.ts`                   | Preserved world dimensions, physics, RPM mapping and gap progression                                                         |
+| `src/game/art.ts`                      | Original Canvas craft/scenery, ordinary and Golden Seeds, gold trail and parachute                                           |
+| `src/Icons.tsx`, `src/style.css`       | SVG hamster states, tokens, responsive layouts, reduced motion                                                               |
+| `tests/`                               | Deterministic simulation, power-up, signal, polling and storage tests                                                        |
+| `scripts/validate-browser.mjs`         | Production Chromium/WebKit interactions, signal fixtures, compact layouts, axe and separate real-API observation             |
+| `scripts/validate-powerup.mjs`         | Production canvas autopilot, actual Golden Seed pickup, badge/trail, pause/recovery/expiration, retry and persistence checks |
+| `DESIGN.md`, `artifacts/validation.md` | Final design and actual validation coverage, findings, results and limitations                                               |
 
-For a change: run the relevant tests, typecheck, rebuild, inspect the production export on mobile, and replace `dist/` after the final source edit. Preserve the strict hardware gate. Do not introduce test fixtures, a localhost endpoint, query-switchable mock mode or synthetic readings into runtime code. `test/scratch/` is temporary and may be deleted at any time; the build has no dependency on it or on the pinned assignment inputs.
-
-## Browser checks and recorded results
+## Validate this release
 
 ```sh
 npx playwright install --with-deps chromium webkit
 npm run test:browser
-# Optional: run one named group
-npm run test:browser -- 'cached data'
-# Compact landscape, scrolled start/retry, and 200% text regression checks
+node scripts/validate-powerup.mjs
+# Optional focused groups
 npm run test:browser -- 'compact HUD'
+node scripts/validate-powerup.mjs chromium
 ```
 
-The browser script starts and closes its own local server at `/preview/`, tests the built output, and writes temporary evidence under `test/scratch/browser/`. Most edge cases use clearly isolated, deterministic network fixtures. The last check contacts the real API and records only the public measurement fields used by the game. These tests add no practice mode to the site.
+Browser scripts serve the production export under `/preview/`, close their own server/browser, and write temporary evidence in `test/scratch/`. Their deterministic network responses and Canvas observation are development-only; no fixture, mock query parameter, practice switch, test hook, or fabricated reading is bundled into public play. The main browser script also separately observes the real API.
 
-Revision validation on 2026-11-01: production build and TypeScript check succeeded; **19/19 unit tests**, **19/19 Chromium/WebKit browser groups**, and **16/16 pinned design-probe checks** passed. Both reported viewport bugs were first reproduced with the real status API. The revised HUD and result panels use the stage space around the unchanged 3:4 canvas; enlarged result text scrolls, and start/retry bring the whole game into view before countdown rendering. The real API returned fresh hardware IDLE data; the production preview had no JavaScript or missing local-resource errors. Results, measurements, review coverage and limitations are recorded in [artifacts/validation.md](artifacts/validation.md), with a response to each finding in `.imd-responses.json`. These are worker observations, not independent certification. Native iPhone hardware, a screen-reader session and browser-native zoom were not tested; viewport resizing and 200% text enlargement were tested separately.
+Production build and typecheck passed; **27/27 unit tests, 19/19 Chromium/WebKit browser groups, 2/2 production Golden Seed interaction checks, and 16/16 design-probe checks passed**. The requested compact sizes and 200% text were checked in both engines.
 
-See [NOTICE.md](NOTICE.md) for font and design-reference attribution. The art, fonts and share card are local assets; only the public hardware status API is needed while playing.
+Validation for this release is recorded in [artifacts/validation.md](artifacts/validation.md), with retained machine-readable results and selected screenshots. These are worker observations, not independent certification. Physical iPhone/Android devices, a screen-reader session, browser-native 200% zoom, and exhaustive contrast over Canvas/transparent overlays are not verified. Viewport emulation and 200% text enlargement are separate checks.
+
+## Repository About and publication handoff
+
+The About description and website fields **were not changed**: this session has no authenticated GitHub metadata connector or GitHub CLI. The owner can apply these exact values, also supplied in [artifacts/github-about.json](artifacts/github-about.json):
+
+**Description:** A handmade 2D flying game powered by real Squeekchain hamster activity. Tap to fly, dodge cardboard obstacles, and collect Golden Seeds for double points.
+
+**Website:** https://squeek-glide-ban-lai-hamster-tao.imd.site/
+
+This is an update to the existing project, not a replacement site. The publication target remains `squeek-glide-ban-lai-hamster-tao.identitymd.eth` and its existing game URL. The existing URL returned HTTP 200 during this task. The contributor publisher must pin the supplied `dist/` as the next version; no hosting or publishing command was run, and the new revision is not claimed live before that handoff.
+
+Source base: [`387da98107bd6a00f45fa42b3dca55adda1701f0`](https://github.com/identity-md-launches/launch-2830-build-publish-squeek/commit/387da98107bd6a00f45fa42b3dca55adda1701f0). The assignment prohibits writes to `.git/`, so the updated commit is assigned by the submission pipeline rather than fabricated here. Existing repository ownership and history are preserved.
+
+See [NOTICE.md](NOTICE.md) for font and design-guide attribution. All runtime art, fonts, favicon, and share assets are local; live gameplay needs only the public hardware status API.

@@ -1,0 +1,22 @@
+[
+  {
+    "browser": "chromium",
+    "passed": true,
+    "powerScore": 22,
+    "finalScore": 34,
+    "badgeColors": {
+      "ink": "rgb(98, 67, 24)",
+      "surface": "rgb(249, 229, 163)"
+    }
+  },
+  {
+    "browser": "webkit",
+    "passed": true,
+    "powerScore": 23,
+    "finalScore": 35,
+    "badgeColors": {
+      "ink": "rgb(98, 67, 24)",
+      "surface": "rgb(249, 229, 163)"
+    }
+  }
+]

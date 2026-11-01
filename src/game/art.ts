@@ -25,7 +25,7 @@ function ellipse(
   y: number,
   rx: number,
   ry: number,
-  fill: string,
+  fill: string | CanvasGradient,
   stroke = "",
   width = 2,
 ) {
@@ -49,7 +49,7 @@ function round(
   w: number,
   h: number,
   r: number,
-  fill: string,
+  fill: string | CanvasGradient,
   stroke = ink,
   width = 2,
 ) {
@@ -76,6 +76,28 @@ export function drawSeed(
   path(c, "M0 -13 C15 -4 12 11 0 15 C-12 9 -13 -4 0 -13Z", "#e3b961", ink, 1.8);
   line(c, "M0 -9 C4 -1 4 7 0 11", "#fff0ba", 2.3);
   line(c, "M-3 -5 L-5 4", "#a9793d", 1.2);
+  c.restore();
+}
+function drawGoldenSeed(c: CanvasRenderingContext2D, x: number, y: number) {
+  c.save();
+  c.translate(x, y);
+  const glow = c.createRadialGradient(0, 0, 8, 0, 0, 29);
+  glow.addColorStop(0, "#ffdb7699");
+  glow.addColorStop(1, "#ffdb7600");
+  ellipse(c, 0, 0, 29, 29, glow);
+  path(
+    c,
+    "M0 -21C24 -11 24 14 0 22C-24 14-24-11 0-21Z",
+    "#f5c64f",
+    "#79531c",
+    2,
+  );
+  line(c, "M-9 -10q-5 8-2 14", "#fff4c7", 2.5);
+  c.font = "800 14px Nunito, sans-serif";
+  c.textAlign = "center";
+  c.textBaseline = "middle";
+  c.fillStyle = "#624318";
+  c.fillText("x2", 1, 1);
   c.restore();
 }
 /** Original Canvas vector artwork. All moving parts share the simulation's clock. */
@@ -395,6 +417,8 @@ export function renderGame(
     );
     if (gate.seed && !gate.collected)
       drawSeed(c, x + WORLD.gateWidth / 2, gate.seedY, 0.85);
+    if (gate.golden && !gate.collected)
+      drawGoldenSeed(c, x + WORLD.gateWidth / 2, gate.seedY);
   }
   if (!reduced)
     for (let i = 0; i < 4; i++) {
@@ -416,6 +440,22 @@ export function renderGame(
     (safeY - session.crashY) * Math.min(1, session.crashTime / 0.55) +
     Math.min(session.crashTime, 1.8) * 8;
   const y = crashed ? crashY : f.y;
+  if (f.doubleRemaining > 0 && !crashed) {
+    c.save();
+    c.globalAlpha = 0.45;
+    for (let i = 0; i < 4; i++) {
+      const drift = reduced ? 0 : (f.time * 24 + i * 13) % 18;
+      ellipse(
+        c,
+        WORLD.playerX - 58 - i * 13 - drift,
+        y + 8 + (i % 2 ? 7 : -7),
+        3 - i * 0.4,
+        1.6,
+        "#b98622",
+      );
+    }
+    c.restore();
+  }
   if (f.wind > 1.3 && !crashed && !reduced) {
     line(
       c,

@@ -56,6 +56,19 @@ async function fixture(browser, options = {}) {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.addInitScript(() => {
+    // Observe the craft's rendered position without adding a runtime game hook.
+    const translate = CanvasRenderingContext2D.prototype.translate;
+    CanvasRenderingContext2D.prototype.translate = function (x, y) {
+      if (
+        this.canvas.width === 480 &&
+        this.canvas.height === 640 &&
+        x === 130 &&
+        y > 21 &&
+        y < 619
+      )
+        window.__craftY = y;
+      return translate.call(this, x, y);
+    };
     let seed = 7;
     Math.random = () => {
       seed = (seed * 1664525 + 1013904223) >>> 0;
@@ -72,6 +85,8 @@ async function fixture(browser, options = {}) {
   };
   await page.route(API, async (route) => {
     state.calls++;
+    // Intentionally leave this request pending until the fixture is closed.
+    if (state.mode === "connecting") return;
     if (state.mode === "network") {
       await route.abort();
       return;
@@ -99,6 +114,7 @@ async function fixture(browser, options = {}) {
     });
     if (state.mode === "simulated") data.measurement.provenance = "simulated";
     if (state.mode === "schema") data.schemaVersion = 2;
+    if (state.mode === "missing") data.measurement = null;
     if (state.mode === "stale")
       data.measurement.receivedAt = new Date(now - 180000).toISOString();
     if (state.mode === "fault") data.measurement.coreStatus = "COUNTER_FAULT";
@@ -108,7 +124,7 @@ async function fixture(browser, options = {}) {
     });
   });
   await page.clock.install({ time: new Date("2026-11-01T15:00:00Z") });
-  await page.clock.pauseAt(new Date("2026-11-01T15:00:00.100Z"));
+  await page.clock.pauseAt(new Date("2026-11-01T15:00:10.000Z"));
   await page.goto(preview.url);
   await page.evaluate(() => document.fonts.ready);
   async function tick(ms) {
@@ -122,7 +138,7 @@ async function fixture(browser, options = {}) {
 }
 async function begin(f) {
   await f.page
-    .getByRole("button", { name: "Bắt đầu bay" })
+    .getByRole("button", { name: "Start flying" })
     .click({ force: true });
   await f.tick(3050);
   assert.ok(
@@ -158,7 +174,7 @@ try {
       async () => {
         const f = await fixture(browser);
         const { page, tick } = f;
-        const button = page.getByRole("button", { name: "Bắt đầu bay" });
+        const button = page.getByRole("button", { name: "Start flying" });
         assert.equal(await button.isEnabled(), true);
         const r = await button.boundingBox();
         assert.ok(r.y + r.height < 844);
@@ -176,13 +192,13 @@ try {
         await page.keyboard.press("Escape");
         await tick(32);
         assert.ok(
-          await page.getByRole("button", { name: "Tiếp tục bay" }).isVisible(),
+          await page.getByRole("button", { name: "Resume" }).isVisible(),
         );
         const paused = await pixels(page);
         await tick(1000);
         assert.equal(await pixels(page), paused);
         await page
-          .getByRole("button", { name: "Cách chơi" })
+          .getByRole("button", { name: "How to play" })
           .click({ force: true });
         assert.equal(
           await page.locator("dialog").evaluate((e) => e.open),
@@ -191,15 +207,15 @@ try {
         await page.keyboard.press("Escape");
         await tick(32);
         assert.ok(
-          await page.getByRole("button", { name: "Tiếp tục bay" }).isVisible(),
+          await page.getByRole("button", { name: "Resume" }).isVisible(),
           "help must preserve manual pause",
         );
         await page
-          .getByRole("button", { name: "Tiếp tục bay" })
+          .getByRole("button", { name: "Resume" })
           .click({ force: true });
         await tick(3050);
         await tick(3400);
-        const retry = page.getByRole("button", { name: "Bay lần nữa" });
+        const retry = page.getByRole("button", { name: "Fly again" });
         assert.ok(await retry.isVisible());
         assert.equal(
           await retry.evaluate((e) => e === document.activeElement),
@@ -220,7 +236,9 @@ try {
       `${browserName}: malformed, simulated, unknown, stale and fault data disable play`,
       async () => {
         for (const mode of [
+          "connecting",
           "badJSON",
+          "missing",
           "simulated",
           "schema",
           "stale",
@@ -229,7 +247,7 @@ try {
           const f = await fixture(browser, { mode });
           assert.equal(
             await f.page
-              .getByRole("button", { name: "Bắt đầu bay" })
+              .getByRole("button", { name: "Start flying" })
               .isDisabled(),
             true,
             mode,
@@ -240,6 +258,19 @@ try {
               .innerText()
               .then((t) => t.includes("—")),
             true,
+          );
+          assert.equal(
+            await f.page.locator(".wheel").getAttribute("data-state"),
+            "unknown",
+            mode,
+          );
+          assert.equal(
+            await f.page.locator(".sleeping-hamster, .running-hamster").count(),
+            0,
+            mode,
+          );
+          assert.ok(
+            (await f.page.locator(".source-state").innerText()).length > 0,
           );
           assert.deepEqual(f.errors, []);
           await f.context.close();
@@ -260,7 +291,7 @@ try {
         }
         assert.ok(
           await f.page
-            .getByRole("heading", { name: "Đang chờ làn gió" })
+            .getByRole("heading", { name: "Waiting for the wheel" })
             .isVisible(),
         );
         const frozen = await pixels(f.page);
@@ -316,7 +347,7 @@ try {
         await f.tick(50);
         assert.ok(
           await f.page
-            .getByRole("heading", { name: "Màn hình đã xoay" })
+            .getByRole("heading", { name: "Screen rotated" })
             .isVisible(),
         );
         assert.equal(await pixels(f.page), before);
@@ -327,10 +358,24 @@ try {
       `${browserName}: cached data ages between polls; wheel stops at zero and honors reduced motion`,
       async () => {
         const f = await fixture(browser, { staleAfterSeconds: 2 });
-        await f.tick(2100);
+        // Expire Date.now between the poller's 200ms age checks. The animation
+        // frame must show unknown/stale immediately, never an old resting label.
+        const expired = await f.page.evaluate(() => Date.now() + 2001);
+        await f.page.clock.setFixedTime(new Date(expired));
+        await f.tick(16);
+        assert.ok(
+          (await f.page.locator(".source-state").innerText()).startsWith(
+            "Stale wheel data",
+          ),
+          "expired data must immediately lose its resting label",
+        );
+        assert.equal(
+          await f.page.locator(".wheel").getAttribute("data-state"),
+          "unknown",
+        );
         assert.equal(
           await f.page
-            .getByRole("button", { name: "Bắt đầu bay" })
+            .getByRole("button", { name: "Start flying" })
             .isDisabled(),
           true,
         );
@@ -340,7 +385,12 @@ try {
           coreStatus: "ACTIVE",
         });
         const transform = () =>
-          w.page.locator(".wheel g").getAttribute("transform");
+          w.page.locator(".wheel-rotor").getAttribute("transform");
+        assert.equal(
+          await w.page.locator(".wheel").getAttribute("data-state"),
+          "running",
+        );
+        assert.equal(await w.page.locator(".running-hamster").count(), 1);
         const first = await transform();
         await w.tick(500);
         assert.notEqual(await transform(), first);
@@ -359,15 +409,69 @@ try {
         );
         await w.page.emulateMedia({ reducedMotion: "no-preference" });
         w.state.rpmMilli = 0;
+        await w.tick(5000);
+        const stopped = await transform();
+        await w.tick(600);
+        assert.equal(
+          await transform(),
+          stopped,
+          "ACTIVE at zero RPM must stop the wheel",
+        );
+        assert.equal(
+          await w.page.locator(".wheel").getAttribute("data-state"),
+          "running",
+        );
+        assert.equal(
+          await w.page
+            .locator(".wheel")
+            .evaluate((e) => e.classList.contains("is-moving")),
+          false,
+        );
+        w.state.rpmMilli = 60000;
         w.state.coreStatus = "IDLE";
         await w.tick(5000);
         const zero = await transform();
         await w.tick(600);
-        assert.equal(await transform(), zero, "wheel must stop at zero RPM");
+        assert.equal(
+          await transform(),
+          zero,
+          "IDLE wheel must stand still even if RPM is nonzero",
+        );
         assert.ok(
           await w.page
-            .getByText("Hamster đang nghỉ", { exact: true })
+            .getByText("Hamster resting", { exact: true })
             .isVisible(),
+        );
+        assert.equal(
+          await w.page.locator(".wheel").getAttribute("data-state"),
+          "resting",
+        );
+        assert.equal(await w.page.locator(".sleeping-hamster").count(), 1);
+        assert.equal(
+          await w.page.locator(".telemetry strong").first().innerText(),
+          "60",
+        );
+        assert.equal(
+          await w.page.locator(".wind-value strong").innerText(),
+          "1.0×",
+        );
+        await w.page.emulateMedia({ reducedMotion: "reduce" });
+        await w.tick(32);
+        assert.equal(
+          await w.page
+            .locator(".sleeping-hamster")
+            .evaluate((e) => getComputedStyle(e).animationName),
+          "none",
+        );
+        await w.page.setViewportSize({ width: 568, height: 320 });
+        await w.tick(64);
+        await w.page
+          .getByRole("button", { name: "Start flying", exact: true })
+          .click({ force: true });
+        await w.tick(32);
+        assert.ok(
+          await w.page.getByText("Resting", { exact: true }).isVisible(),
+          "IDLE label remains visible in compact landscape",
         );
         await w.context.close();
       },
@@ -377,6 +481,10 @@ try {
       async () => {
         const f = await fixture(browser);
         const { page } = f;
+        assert.equal(
+          await page.evaluate(() => document.documentElement.lang),
+          "en",
+        );
         for (const [width, height] of [
           [320, 568],
           [390, 844],
@@ -392,7 +500,7 @@ try {
             false,
           );
           const box = await page
-            .getByRole("button", { name: "Bắt đầu bay" })
+            .getByRole("button", { name: "Start flying" })
             .boundingBox();
           assert.ok(
             box.y + box.height <= height,
@@ -427,6 +535,43 @@ try {
         const scan = await new AxeBuilder({ page })
           .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
           .analyze();
+        if (scan.violations.length) {
+          await writeFile(
+            `${output}/${browserName}-axe-failure.json`,
+            JSON.stringify(scan.violations, null, 2),
+          );
+          await writeFile(
+            `${output}/${browserName}-computed-failure.json`,
+            JSON.stringify(
+              await page.locator(".primary").evaluateAll((elements) =>
+                elements.map((e) => {
+                  const c = getComputedStyle(e),
+                    label = e.querySelector("span");
+                  return {
+                    text: e.textContent,
+                    disabled: e.disabled,
+                    color: c.color,
+                    background: c.backgroundColor,
+                    opacity: c.opacity,
+                    fontSize: c.fontSize,
+                    fontWeight: c.fontWeight,
+                    label: label
+                      ? {
+                          color: getComputedStyle(label).color,
+                          opacity: getComputedStyle(label).opacity,
+                        }
+                      : null,
+                  };
+                }),
+              ),
+              null,
+              2,
+            ),
+          );
+          await page.screenshot({
+            path: `${output}/${browserName}-axe-failure.png`,
+          });
+        }
         assert.deepEqual(
           scan.violations.map((v) => ({
             id: v.id,
@@ -435,7 +580,7 @@ try {
           [],
         );
         await page
-          .getByRole("button", { name: "Cách chơi" })
+          .getByRole("button", { name: "How to play" })
           .click({ force: true });
         const helpScan = await new AxeBuilder({ page })
           .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
@@ -451,7 +596,7 @@ try {
         await page.keyboard.press("Escape");
         assert.equal(
           await page
-            .getByRole("button", { name: "Cách chơi" })
+            .getByRole("button", { name: "How to play" })
             .evaluate((e) => e === document.activeElement),
           true,
         );
@@ -489,9 +634,11 @@ try {
         });
         await f.tick(2000);
         assert.ok(
-          await f.page.getByRole("button", { name: "Bay lần nữa" }).isVisible(),
+          await f.page.getByRole("button", { name: "Fly again" }).isVisible(),
         );
-        const final = Number(await f.page.locator(".score").innerText());
+        const final = Number(
+          await f.page.locator(".result-numbers strong").first().innerText(),
+        );
         assert.ok(final >= earned);
         assert.equal(
           await f.page.evaluate(() =>
@@ -500,7 +647,12 @@ try {
           final,
         );
         await f.tick(5000);
-        assert.equal(Number(await f.page.locator(".score").innerText()), final);
+        assert.equal(
+          Number(
+            await f.page.locator(".result-numbers strong").first().innerText(),
+          ),
+          final,
+        );
         await f.context.close();
       },
     );
@@ -519,83 +671,168 @@ try {
           const { page, tick } = f;
           const label = `${width}x${height} at ${textSize}% text`;
           const rect = (selector) =>
-            page.locator(selector).evaluate((e) => e.getBoundingClientRect().toJSON());
+            page
+              .locator(selector)
+              .evaluate((e) => e.getBoundingClientRect().toJSON());
           const inside = (item, bounds, message) => {
             assert.ok(item.top >= bounds.top - 1, `${label}: ${message} top`);
-            assert.ok(item.bottom <= bounds.bottom + 1, `${label}: ${message} bottom`);
-            assert.ok(item.left >= bounds.left - 1, `${label}: ${message} left`);
-            assert.ok(item.right <= bounds.right + 1, `${label}: ${message} right`);
+            assert.ok(
+              item.bottom <= bounds.bottom + 1,
+              `${label}: ${message} bottom`,
+            );
+            assert.ok(
+              item.left >= bounds.left - 1,
+              `${label}: ${message} left`,
+            );
+            assert.ok(
+              item.right <= bounds.right + 1,
+              `${label}: ${message} right`,
+            );
           };
           const screen = { top: 0, bottom: height, left: 0, right: width };
           if (textSize === 200)
-            await page.evaluate(() => document.documentElement.style.fontSize = "200%");
+            await page.evaluate(
+              () => (document.documentElement.style.fontSize = "200%"),
+            );
           await page.evaluate(() => window.scrollTo(0, 200));
-          await page.getByRole("button", { name: "Bắt đầu bay" }).click();
+          await page.getByRole("button", { name: "Start flying" }).click();
           // Position and focus must be correct before the countdown advances.
           assert.equal(await page.locator(".countdown").innerText(), "3");
           const positioned = await rect(".game-viewport");
           inside(positioned, screen, "world after scrolled start");
-          assert.equal(await page.locator(".game-viewport").evaluate(e => e === document.activeElement), true);
+          assert.equal(
+            await page
+              .locator(".game-viewport")
+              .evaluate((e) => e === document.activeElement),
+            true,
+          );
           await tick(3050);
           const score = await rect(".score");
           const pause = await rect(".pause-button");
           inside(score, screen, "score");
           inside(pause, screen, "pause control");
-          assert.ok(score.right + 12 <= pause.left, `${label}: HUD controls overlap`);
+          assert.ok(
+            score.right + 12 <= pause.left,
+            `${label}: HUD controls overlap`,
+          );
           assert.ok(pause.width >= 44 && pause.height >= 44);
-          await page.screenshot({ path: `${output}/${browserName}-hud-${width}-${textSize}.png` });
-          await page.getByRole("button", { name: "Tạm dừng chuyến bay", exact: true }).click();
+          await page.screenshot({
+            path: `${output}/${browserName}-hud-${width}-${textSize}.png`,
+          });
+          await page
+            .getByRole("button", { name: "Pause", exact: true })
+            .click();
           await tick(32);
           const frozen = await pixels(page);
           await tick(200);
           assert.equal(await pixels(page), frozen);
-          const resume = page.getByRole("button", { name: "Tiếp tục bay" });
+          const resume = page.getByRole("button", { name: "Resume" });
           await resume.click();
           await tick(6500);
           const overlay = page.locator(".over-overlay");
-          const retry = page.getByRole("button", { name: "Bay lần nữa" });
-          assert.equal(await retry.evaluate(e => e === document.activeElement), true);
+          const retry = page.getByRole("button", { name: "Fly again" });
+          assert.equal(
+            await retry.evaluate((e) => e === document.activeElement),
+            true,
+          );
           const bounds = await rect(".over-overlay");
           const heading = await rect(".result h2");
           inside(heading, bounds, "result heading");
           inside(heading, screen, "result heading on screen");
           assert.equal(await page.locator(".result-numbers strong").count(), 2);
           if (textSize === 100) {
-            inside(await rect(".result-numbers"), bounds, "final score and local best");
-            inside(await rect(".result .primary"), bounds, "entire retry control");
+            inside(
+              await rect(".result-numbers"),
+              bounds,
+              "final score and local best",
+            );
+            inside(
+              await rect(".result .primary"),
+              bounds,
+              "entire retry control",
+            );
             inside(await rect(".result .primary"), screen, "retry on screen");
           } else {
-            assert.equal(await overlay.evaluate(e => getComputedStyle(e).overflowY), "auto");
-            assert.ok(await overlay.evaluate(e => e.scrollHeight > e.clientHeight));
+            assert.equal(
+              await overlay.evaluate((e) => getComputedStyle(e).overflowY),
+              "auto",
+            );
+            assert.ok(
+              await overlay.evaluate((e) => e.scrollHeight > e.clientHeight),
+            );
             // The scroll region precedes retry in the tab order; native keys
             // must reveal either end without scrolling the surrounding page.
             await page.keyboard.press("Shift+Tab");
-            assert.equal(await overlay.evaluate(e => e === document.activeElement), true);
+            assert.equal(
+              await overlay.evaluate((e) => e === document.activeElement),
+              true,
+            );
             const pageScroll = await page.evaluate(() => scrollY);
             await page.keyboard.press("End");
             await tick(500);
-            assert.ok(await overlay.evaluate(e => e.scrollTop > 0));
-            inside(await rect(".result .primary"), bounds, "retry after keyboard scroll");
+            assert.ok(await overlay.evaluate((e) => e.scrollTop > 0));
+            inside(
+              await rect(".result .primary"),
+              bounds,
+              "retry after keyboard scroll",
+            );
             assert.equal(await page.evaluate(() => scrollY), pageScroll);
-            await page.screenshot({ path: `${output}/${browserName}-result-${width}-${textSize}-scrolled.png` });
+            await page.screenshot({
+              path: `${output}/${browserName}-result-${width}-${textSize}-scrolled.png`,
+            });
             await page.keyboard.press("Home");
             await tick(500);
-            inside(await rect(".result h2"), bounds, "heading after keyboard scroll");
+            inside(
+              await rect(".result h2"),
+              bounds,
+              "heading after keyboard scroll",
+            );
           }
-          await page.screenshot({ path: `${output}/${browserName}-result-${width}-${textSize}.png` });
-          measurements.push({ width, height, textSize, positioned, score, pause, result: bounds, heading, retry: await rect(".result .primary") });
+          await page.screenshot({
+            path: `${output}/${browserName}-result-${width}-${textSize}.png`,
+          });
+          measurements.push({
+            width,
+            height,
+            textSize,
+            positioned,
+            score,
+            pause,
+            result: bounds,
+            heading,
+            retry: await rect(".result .primary"),
+          });
           // Scroll away again to prove retry uses the same positioning path.
-          await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+          await page.evaluate(() =>
+            window.scrollTo(0, document.documentElement.scrollHeight),
+          );
           await retry.click();
           assert.equal(await page.locator(".countdown").innerText(), "3");
-          inside(await rect(".game-viewport"), screen, "world after scrolled retry");
+          inside(
+            await rect(".game-viewport"),
+            screen,
+            "world after scrolled retry",
+          );
           assert.equal(await page.locator(".score").innerText(), "0");
-          assert.equal(await page.locator(".game-viewport").evaluate(e => e === document.activeElement), true);
-          assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+          assert.equal(
+            await page
+              .locator(".game-viewport")
+              .evaluate((e) => e === document.activeElement),
+            true,
+          );
+          assert.equal(
+            await page.evaluate(
+              () => document.documentElement.scrollWidth > innerWidth,
+            ),
+            false,
+          );
           assert.deepEqual(f.errors, []);
           await f.context.close();
         }
-        await writeFile(`${output}/${browserName}-viewport-measurements.json`, JSON.stringify(measurements, null, 2));
+        await writeFile(
+          `${output}/${browserName}-viewport-measurements.json`,
+          JSON.stringify(measurements, null, 2),
+        );
       },
     );
     await browser.close();
@@ -615,7 +852,8 @@ try {
             isPrimary: true,
             button: 0,
           });
-        await f.tick(100);
+        await f.tick(200);
+        if (kind === "flap") await f.page.keyboard.press("Space");
         if (kind === "click")
           await f.page.locator(".game-viewport>canvas").dispatchEvent("click");
         if (kind === "repeat")
@@ -633,15 +871,25 @@ try {
               isPrimary: false,
               button: 0,
             });
-        await f.tick(100);
-        const p = await pixels(f.page);
+        await f.tick(200);
+        const p = await f.page.evaluate(() => window.__craftY);
         await f.context.close();
         return p;
       }
       const baseline = await trajectory("none");
-      assert.equal(await trajectory("click"), baseline);
-      assert.equal(await trajectory("repeat"), baseline);
-      assert.equal(await trajectory("secondary"), baseline);
+      for (const kind of ["click", "repeat", "secondary"]) {
+        const actual = await trajectory(kind);
+        assert.ok(
+          Math.abs(actual - baseline) <= 2.5,
+          `${kind} changed the craft trajectory: ${actual} vs ${baseline}`,
+        );
+      }
+      // One fixed step of render timing may differ between contexts. A real
+      // second flap changes the position by ~29 units, well beyond tolerance.
+      assert.ok(
+        baseline - (await trajectory("flap")) > 20,
+        "control comparison must detect an actual second flap",
+      );
     },
   );
   await check(
@@ -656,12 +904,18 @@ try {
       assert.ok(Number(await f.page.locator(".score").innerText()) >= 1);
       await f.tick(3500);
       assert.ok(
-        await f.page.getByRole("button", { name: "Bay lần nữa" }).isVisible(),
+        await f.page.getByRole("button", { name: "Fly again" }).isVisible(),
       );
       assert.ok(
         (await f.page.locator(".local-note").innerText()).includes(
-          "không cho lưu",
+          "Storage unavailable",
         ),
+      );
+      assert.ok(
+        (
+          await f.page.locator('.sr-only[role="status"]').first().innerText()
+        ).includes("kept for this session only"),
+        "screen-reader result must not claim an unsaved best was saved",
       );
       assert.deepEqual(f.errors, []);
       await f.context.close();
