@@ -4,7 +4,7 @@
 
 A small, cozy flight game for Squeekchain Genesis Code Lane, with a Vietnamese interface. Its visual idea is a cream hamster in a handmade pale-yellow cardboard aircraft against a mint paper landscape. Dark outlines, narrow honey-brown braces, seed-shell wings and a coral candy-wrapper parachute carry the story. The box remains cardboard rather than a wooden crate.
 
-The start screen presents the title, one explanatory sentence, the aircraft and one primary action. Desktop uses two columns; mobile places the art between the title and action. Live hardware status stays visible in every state. The playable world is always portrait 3:4, with desktop side notes serving only as decoration.
+The start screen presents the title, one explanatory sentence, the aircraft and one primary action. Desktop uses two columns; mobile places the art between the title and action. Live hardware status stays visible in every state. The playable world is always portrait 3:4, with desktop side notes serving only as decoration. The HUD and text overlays use the surrounding stage width independently of that world.
 
 Source of truth: `src/style.css`, `src/Icons.tsx`, `src/game/art.ts` and `src/App.tsx`. Artwork uses editable drawing paths, not external illustrations.
 
@@ -52,11 +52,15 @@ Shared header/main/footer width: `min(1160px, 100% - 64px)`, becoming `100% - 28
 - **At 1000 px and below:** title becomes 48 px; lane metadata disappears; desktop side notes become smaller.
 - **At 650 px and below:** start screen stacks title, intro, aircraft and action. The live strip wraps metrics onto a second row. Header and status can wrap when text grows. Game side notes are hidden. The instruction next to the start control is not repeated in the lower legend.
 - **Phone heights up to 700 px:** the title is 28 px on one line where it fits, the portrait becomes 226 × 134 px, and vertical spacing tightens. The product and main action remain visible at 320 × 568.
-- **Short landscape:** the game uses a shorter viewport budget; secondary result decoration is reduced to keep controls reachable. An orientation change pauses gameplay and requires fresh data and an explicit continue.
+- **Short landscape:** the game uses a shorter viewport budget; secondary result decoration is reduced to keep controls reachable. Pause/result panels give `.game-layout` a minimum height of `min(460px, 100svh - 84px)`. They use its full width rather than the narrow canvas. An orientation change pauses gameplay and requires fresh data and an explicit continue.
 
 The actual flight canvas has an invariant 480 × 640 coordinate system. CSS fits it to a 3:4 box, capped at 405 px wide and additionally bounded by available `svh`. Resizing does not mutate physics, existing gaps or score. Desktop side scenery does not expose additional gates. The fixed world aspect is essential to fairness.
 
-Checked rendered widths: 320, 390, 768 and 1440 CSS px; portrait/landscape transition at 390 × 844 to 844 × 390; 200% root text enlargement at 390. This is not a claim of native browser zoom or physical-device verification.
+`.game-layout` is the positioning container for the HUD, countdown, pause and result overlays. The HUD uses three grid columns: score in the center, pause at the trailing edge, with a 12 px minimum gap. The clipped `.game-viewport` contains only the canvas. Overlay cards have automatic block margins and cannot shrink; when text exceeds the available height, the overlay scrolls from an accessible top instead of centering content above its clip edge. The result region is a named keyboard focus target with an inset focus ring and native Home/End scrolling. No global scroll suppression is applied to this text region.
+
+Before the first countdown frame, a layout effect brings the mounted `.game-layout` into view with an immediate nearest-edge scroll adjustment, then focuses the game without another scroll. Start, retry and resumed countdowns share this positioning. Physics coordinates and the canvas aspect ratio stay unchanged.
+
+Checked rendered widths: 320, 390, 568, 768, 844 and 1440 CSS px; portrait/landscape transition at 390 × 844 to 844 × 390; 200% root text enlargement at 390 × 844 and 568 × 320. This is not a claim of native browser zoom or physical-device verification.
 
 ## Elevation & Depth
 
@@ -79,7 +83,7 @@ Walls keep straight collision edges. Gnaw marks are printed inside their shape. 
 | `.live-strip`, `Wheel` in `App.tsx` / `Icons.tsx` | Real status text, measured RPM and smoothed in-flight multiplier. Unusable readings display an unavailable mark instead of invented zero RPM. A stable polite live region announces connection changes. |
 | `.game-viewport` and `Session` | Focusable named group with active-game Space/Escape handling. Pointer-down only; secondary contacts and key repeat ignored. Page gestures are prevented only on active game controls. Score has an opaque cream backing and a named output; only important lifecycle changes are announced. |
 | `.pause-card`, `.countdown-overlay` | Frozen scene explanation or 3→2→1 readiness cue. Manual/orientation resume is explicit; network/visibility recovery is automatic after validation. |
-| `.result` | Final score, local best, passed pairs, collected seeds, prominent retry, honest local-storage note. Retry receives focus and resets the whole run. |
+| `.result`, `.over-overlay` | Final score, local best, passed pairs, collected seeds, prominent retry, honest local-storage note. The stage-sized overlay scrolls vertically with enlarged text; Shift+Tab from retry focuses its named region for keyboard scrolling. Retry receives focus and resets the whole run. |
 | `.help-dialog` | Native modal `dialog` with a labelled heading, native focus containment, Escape/dismiss support and focus return. Opening help preserves prior manual pause state. |
 | `drawCraft`, `drawScenery`, `renderGame` in `art.ts` | Original artwork with simulation-driven flap, pitch, hamster bob, wind details, parallax, scraps and parachute. No independent animation timer can keep gameplay moving during a signal pause. |
 

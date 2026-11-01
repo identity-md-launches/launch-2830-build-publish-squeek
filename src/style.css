@@ -81,6 +81,7 @@ a {
 }
 button:focus-visible,
 a:focus-visible,
+.game-overlay:focus-visible,
 .game-viewport:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 5px;
@@ -426,11 +427,15 @@ kbd {
   min-height: 24px;
 }
 .game-layout {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 40px;
   padding: 16px 24px 20px;
+}
+.game-layout.has-panel {
+  min-height: min(460px, calc(100svh - 84px));
 }
 .game-viewport {
   position: relative;
@@ -454,13 +459,18 @@ kbd {
 }
 .game-hud {
   position: absolute;
+  z-index: 1;
   inset-block-start: 10px;
-  inset-inline-start: 0;
-  width: 100%;
+  inset-inline: 16px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: start;
+  gap: 12px;
   text-align: center;
   pointer-events: none;
 }
 .score {
+  grid-column: 2;
   font-size: var(--text-display);
   font-weight: 800;
   line-height: 1;
@@ -476,9 +486,10 @@ kbd {
   background: var(--surface);
 }
 .pause-button {
-  position: absolute;
-  inset-block-start: 12px;
-  inset-inline-end: 12px;
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  pointer-events: auto;
   width: 44px;
   height: 44px;
   display: grid;
@@ -488,14 +499,25 @@ kbd {
 }
 .game-overlay {
   position: absolute;
+  z-index: 2;
   inset: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   flex-direction: column;
   padding: 20px;
   background: #d9ebe0e8;
   text-align: center;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.game-overlay > .pause-card,
+.game-overlay > .result {
+  flex-shrink: 0;
+  margin-block: auto;
+}
+.game-overlay:focus-visible {
+  outline-offset: -5px;
 }
 .pause-card {
   width: 100%;
@@ -521,6 +543,7 @@ h2 {
   text-wrap: pretty;
 }
 .countdown-overlay {
+  justify-content: center;
   background: #d9ebe0b0;
   pointer-events: none;
 }
@@ -1105,6 +1128,7 @@ h2 {
   }
   button:focus-visible,
   a:focus-visible,
+  .game-overlay:focus-visible,
   .game-viewport:focus-visible {
     outline-color: Highlight;
   }

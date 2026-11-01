@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { BrandMark, Icon, Wheel } from "./Icons";
 import { HardwareSignal, isFresh, type SignalState } from "./live/signal";
 import { Session, readBest, saveBest, type Phase } from "./game/engine";
@@ -187,6 +187,17 @@ export default function App() {
   useEffect(() => {
     if (view.phase === "over") retry.current?.focus({ preventScroll: true });
   }, [view.phase]);
+  useLayoutEffect(() => {
+    if (view.phase !== "playing" || view.countdown !== 3) return;
+    // The welcome screen can be taller than the flight screen. Position the
+    // mounted world before its first countdown frame, including on retry.
+    game.current?.parentElement?.scrollIntoView({
+      behavior: "instant",
+      block: "nearest",
+    });
+    game.current?.focus({ preventScroll: true });
+    frameReset.current = true;
+  }, [view.phase, view.countdown]);
   useEffect(() => {
     if (help) dialog.current?.showModal();
     else if (dialog.current?.open) dialog.current.close();
@@ -206,7 +217,6 @@ export default function App() {
     if (session.start()) {
       frameReset.current = true;
       setView(viewOf(session));
-      requestAnimationFrame(() => game.current?.focus({ preventScroll: true }));
     }
   }
   function resume() {
@@ -328,7 +338,9 @@ export default function App() {
             </div>
           ) : (
             <>
-              <div className="game-layout">
+              <div
+                className={`game-layout ${view.phase === "over" || view.paused ? "has-panel" : ""}`}
+              >
                 <aside className="flight-notes" aria-hidden="true">
                   <span className="note-line" />
                   <p>
@@ -383,15 +395,15 @@ export default function App() {
                     height={WORLD.height}
                     aria-hidden="true"
                   />
-                  <div className="game-hud" aria-hidden={view.phase === "over"}>
-                    <output
-                      className="score"
-                      aria-label="Điểm chuyến bay"
-                      aria-live="off"
-                    >
-                      {view.score}
-                    </output>
-                  </div>
+                </div>
+                <div className="game-hud" aria-hidden={view.phase === "over"}>
+                  <output
+                    className="score"
+                    aria-label="Điểm chuyến bay"
+                    aria-live="off"
+                  >
+                    {view.score}
+                  </output>
                   {inRun && !view.paused && view.countdown === null && (
                     <button
                       className="pause-button"
@@ -405,78 +417,83 @@ export default function App() {
                       <Icon name="pause" />
                     </button>
                   )}
-                  {inRun && view.paused && (
-                    <div className="game-overlay">
-                      <div className="pause-card">
-                        <Icon name={!ready ? "signal" : "pause"} />
-                        <h2>{pausedTitle}</h2>
-                        <p>
-                          {!ready
-                            ? "Chuyến bay được giữ nguyên. Tự tiếp tục khi có dữ liệu mới."
-                            : view.reason === "orientation"
-                              ? "Tỷ lệ thế giới vẫn giữ nguyên. Sẵn sàng bay tiếp?"
-                              : "Chiếc hộp vẫn chờ bạn ở đây."}
-                        </p>
-                        {ready && (
-                          <button
-                            className="primary"
-                            type="button"
-                            onClick={resume}
-                          >
-                            Tiếp tục bay <Icon name="play" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {inRun && !view.paused && view.countdown !== null && (
-                    <div className="game-overlay countdown-overlay">
-                      <div className="countdown" aria-hidden="true">
-                        {view.countdown}
-                      </div>
-                      <p>Chuẩn bị vỗ cánh</p>
-                    </div>
-                  )}
-                  {view.phase === "over" && (
-                    <div className="game-overlay over-overlay">
-                      <div className="result">
-                        <span className="result-icon">
-                          <Icon name="medal" />
-                        </span>
-                        <h2>Hạ cánh rồi!</h2>
-                        <p>Gấp lại dù, bay thêm lần nữa?</p>
-                        <div className="result-numbers">
-                          <div>
-                            <span>Điểm chuyến bay</span>
-                            <strong>{view.score}</strong>
-                          </div>
-                          <div>
-                            <span>Kỷ lục của bạn</span>
-                            <strong>{best}</strong>
-                          </div>
-                        </div>
-                        <p className="score-detail">
-                          {view.passed} khe vượt qua · {view.seeds} hạt hướng
-                          dương
-                        </p>
+                </div>
+                {inRun && view.paused && (
+                  <div className="game-overlay">
+                    <div className="pause-card">
+                      <Icon name={!ready ? "signal" : "pause"} />
+                      <h2>{pausedTitle}</h2>
+                      <p>
+                        {!ready
+                          ? "Chuyến bay được giữ nguyên. Tự tiếp tục khi có dữ liệu mới."
+                          : view.reason === "orientation"
+                            ? "Tỷ lệ thế giới vẫn giữ nguyên. Sẵn sàng bay tiếp?"
+                            : "Chiếc hộp vẫn chờ bạn ở đây."}
+                      </p>
+                      {ready && (
                         <button
                           className="primary"
                           type="button"
-                          onClick={start}
-                          disabled={!ready}
-                          ref={retry}
+                          onClick={resume}
                         >
-                          Bay lần nữa <Icon name="arrow" />
+                          Tiếp tục bay <Icon name="play" />
                         </button>
-                        <p className="local-note">
-                          {storageOK
-                            ? "Kỷ lục được lưu trên trình duyệt này."
-                            : "Trình duyệt không cho lưu. Kỷ lục chỉ giữ trong phiên này."}
-                        </p>
-                      </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+                {inRun && !view.paused && view.countdown !== null && (
+                  <div className="game-overlay countdown-overlay">
+                    <div className="countdown" aria-hidden="true">
+                      {view.countdown}
+                    </div>
+                    <p>Chuẩn bị vỗ cánh</p>
+                  </div>
+                )}
+                {view.phase === "over" && (
+                  <div
+                    className="game-overlay over-overlay"
+                    tabIndex={0}
+                    role="region"
+                    aria-label="Kết quả chuyến bay"
+                  >
+                    <div className="result">
+                      <span className="result-icon">
+                        <Icon name="medal" />
+                      </span>
+                      <h2>Hạ cánh rồi!</h2>
+                      <p>Gấp lại dù, bay thêm lần nữa?</p>
+                      <div className="result-numbers">
+                        <div>
+                          <span>Điểm chuyến bay</span>
+                          <strong>{view.score}</strong>
+                        </div>
+                        <div>
+                          <span>Kỷ lục của bạn</span>
+                          <strong>{best}</strong>
+                        </div>
+                      </div>
+                      <p className="score-detail">
+                        {view.passed} khe vượt qua · {view.seeds} hạt hướng
+                        dương
+                      </p>
+                      <button
+                        className="primary"
+                        type="button"
+                        onClick={start}
+                        disabled={!ready}
+                        ref={retry}
+                      >
+                        Bay lần nữa <Icon name="arrow" />
+                      </button>
+                      <p className="local-note">
+                        {storageOK
+                          ? "Kỷ lục được lưu trên trình duyệt này."
+                          : "Trình duyệt không cho lưu. Kỷ lục chỉ giữ trong phiên này."}
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <aside className="flight-notes right-note" aria-hidden="true">
                   <Icon name="seed" />
                   <p>

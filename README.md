@@ -95,10 +95,12 @@ npx playwright install --with-deps chromium webkit
 npm run test:browser
 # Optional: run one named group
 npm run test:browser -- 'cached data'
+# Compact landscape, scrolled start/retry, and 200% text regression checks
+npm run test:browser -- 'compact HUD'
 ```
 
 The browser script starts and closes its own local server at `/preview/`, tests the built output, and writes temporary evidence under `test/scratch/browser/`. Most edge cases use clearly isolated, deterministic network fixtures. The last check contacts the real API and records only the public measurement fields used by the game. These tests add no practice mode to the site.
 
-Worker validation on 2026-11-01: production build and TypeScript check succeeded; **19/19 unit tests**, **17/17 Chromium/WebKit browser groups**, and **16/16 pinned design-probe checks** passed. The real API returned fresh hardware IDLE data; the production preview had no JavaScript or missing local-resource errors. Detailed results, screenshots, measured contrast pairs and exact limitations are recorded in [artifacts/validation.md](artifacts/validation.md). These are worker observations, not independent certification. Native iPhone hardware, a screen-reader session and browser-native zoom were not tested; viewport resizing and 200% text enlargement were tested separately.
+Revision validation on 2026-11-01: production build and TypeScript check succeeded; **19/19 unit tests**, **19/19 Chromium/WebKit browser groups**, and **16/16 pinned design-probe checks** passed. Both reported viewport bugs were first reproduced with the real status API. The revised HUD and result panels use the stage space around the unchanged 3:4 canvas; enlarged result text scrolls, and start/retry bring the whole game into view before countdown rendering. The real API returned fresh hardware IDLE data; the production preview had no JavaScript or missing local-resource errors. Results, measurements, review coverage and limitations are recorded in [artifacts/validation.md](artifacts/validation.md), with a response to each finding in `.imd-responses.json`. These are worker observations, not independent certification. Native iPhone hardware, a screen-reader session and browser-native zoom were not tested; viewport resizing and 200% text enlargement were tested separately.
 
 See [NOTICE.md](NOTICE.md) for font and design-reference attribution. The art, fonts and share card are local assets; only the public hardware status API is needed while playing.

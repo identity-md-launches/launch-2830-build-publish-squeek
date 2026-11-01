@@ -39,7 +39,7 @@ function payload(now, options = {}) {
 }
 async function fixture(browser, options = {}) {
   const context = await browser.newContext({
-    viewport: { width: 390, height: 844 },
+    viewport: options.viewport ?? { width: 390, height: 844 },
     hasTouch: true,
     reducedMotion: "no-preference",
   });
@@ -502,6 +502,100 @@ try {
         await f.tick(5000);
         assert.equal(Number(await f.page.locator(".score").innerText()), final);
         await f.context.close();
+      },
+    );
+    await check(
+      `${browserName}: compact HUD, scroll positioning and enlarged result controls`,
+      async () => {
+        const measurements = [];
+        for (const [width, height, textSize] of [
+          [568, 320, 100],
+          [844, 390, 100],
+          [390, 844, 100],
+          [390, 844, 200],
+          [568, 320, 200],
+        ]) {
+          const f = await fixture(browser, { viewport: { width, height } });
+          const { page, tick } = f;
+          const label = `${width}x${height} at ${textSize}% text`;
+          const rect = (selector) =>
+            page.locator(selector).evaluate((e) => e.getBoundingClientRect().toJSON());
+          const inside = (item, bounds, message) => {
+            assert.ok(item.top >= bounds.top - 1, `${label}: ${message} top`);
+            assert.ok(item.bottom <= bounds.bottom + 1, `${label}: ${message} bottom`);
+            assert.ok(item.left >= bounds.left - 1, `${label}: ${message} left`);
+            assert.ok(item.right <= bounds.right + 1, `${label}: ${message} right`);
+          };
+          const screen = { top: 0, bottom: height, left: 0, right: width };
+          if (textSize === 200)
+            await page.evaluate(() => document.documentElement.style.fontSize = "200%");
+          await page.evaluate(() => window.scrollTo(0, 200));
+          await page.getByRole("button", { name: "Bắt đầu bay" }).click();
+          // Position and focus must be correct before the countdown advances.
+          assert.equal(await page.locator(".countdown").innerText(), "3");
+          const positioned = await rect(".game-viewport");
+          inside(positioned, screen, "world after scrolled start");
+          assert.equal(await page.locator(".game-viewport").evaluate(e => e === document.activeElement), true);
+          await tick(3050);
+          const score = await rect(".score");
+          const pause = await rect(".pause-button");
+          inside(score, screen, "score");
+          inside(pause, screen, "pause control");
+          assert.ok(score.right + 12 <= pause.left, `${label}: HUD controls overlap`);
+          assert.ok(pause.width >= 44 && pause.height >= 44);
+          await page.screenshot({ path: `${output}/${browserName}-hud-${width}-${textSize}.png` });
+          await page.getByRole("button", { name: "Tạm dừng chuyến bay", exact: true }).click();
+          await tick(32);
+          const frozen = await pixels(page);
+          await tick(200);
+          assert.equal(await pixels(page), frozen);
+          const resume = page.getByRole("button", { name: "Tiếp tục bay" });
+          await resume.click();
+          await tick(6500);
+          const overlay = page.locator(".over-overlay");
+          const retry = page.getByRole("button", { name: "Bay lần nữa" });
+          assert.equal(await retry.evaluate(e => e === document.activeElement), true);
+          const bounds = await rect(".over-overlay");
+          const heading = await rect(".result h2");
+          inside(heading, bounds, "result heading");
+          inside(heading, screen, "result heading on screen");
+          assert.equal(await page.locator(".result-numbers strong").count(), 2);
+          if (textSize === 100) {
+            inside(await rect(".result-numbers"), bounds, "final score and local best");
+            inside(await rect(".result .primary"), bounds, "entire retry control");
+            inside(await rect(".result .primary"), screen, "retry on screen");
+          } else {
+            assert.equal(await overlay.evaluate(e => getComputedStyle(e).overflowY), "auto");
+            assert.ok(await overlay.evaluate(e => e.scrollHeight > e.clientHeight));
+            // The scroll region precedes retry in the tab order; native keys
+            // must reveal either end without scrolling the surrounding page.
+            await page.keyboard.press("Shift+Tab");
+            assert.equal(await overlay.evaluate(e => e === document.activeElement), true);
+            const pageScroll = await page.evaluate(() => scrollY);
+            await page.keyboard.press("End");
+            await tick(500);
+            assert.ok(await overlay.evaluate(e => e.scrollTop > 0));
+            inside(await rect(".result .primary"), bounds, "retry after keyboard scroll");
+            assert.equal(await page.evaluate(() => scrollY), pageScroll);
+            await page.screenshot({ path: `${output}/${browserName}-result-${width}-${textSize}-scrolled.png` });
+            await page.keyboard.press("Home");
+            await tick(500);
+            inside(await rect(".result h2"), bounds, "heading after keyboard scroll");
+          }
+          await page.screenshot({ path: `${output}/${browserName}-result-${width}-${textSize}.png` });
+          measurements.push({ width, height, textSize, positioned, score, pause, result: bounds, heading, retry: await rect(".result .primary") });
+          // Scroll away again to prove retry uses the same positioning path.
+          await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+          await retry.click();
+          assert.equal(await page.locator(".countdown").innerText(), "3");
+          inside(await rect(".game-viewport"), screen, "world after scrolled retry");
+          assert.equal(await page.locator(".score").innerText(), "0");
+          assert.equal(await page.locator(".game-viewport").evaluate(e => e === document.activeElement), true);
+          assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+          assert.deepEqual(f.errors, []);
+          await f.context.close();
+        }
+        await writeFile(`${output}/${browserName}-viewport-measurements.json`, JSON.stringify(measurements, null, 2));
       },
     );
     await browser.close();
